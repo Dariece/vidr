@@ -1,6 +1,6 @@
 plugins {
-    java
     `java-gradle-plugin`
+    `maven-publish`
     id("org.springframework.boot") version "3.0.2"
     id("io.spring.dependency-management") version "1.1.0"
 }
@@ -17,8 +17,15 @@ configurations {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
+
+//dependencyManagement {
+//    imports {
+//        mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+//    }
+//}
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
@@ -30,9 +37,33 @@ dependencies {
 
 gradlePlugin {
     plugins {
-        create("VIDR") {
-            id = "de.daniel.marlinghaus.vidr"
-            implementationClass = "de.daniel.marlinghaus.vidr.VIDRPlugin"
+        create("vidr") {
+            id = "${project.group}.vidr"
+            implementationClass = "${project.group}.vidr.VIDRPlugin"
+        }
+    }
+}
+
+tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    enabled = false
+}
+
+tasks.getByName<Jar>("jar") {
+    enabled = true
+}
+
+springBoot {
+    mainClass.set("de.daniel.marlinghaus.vidr.VIDRPlugin")
+}
+
+publishing    {
+    publications {
+        create<MavenPublication>("${project.group}.vidr") {
+            groupId = "${project.group}"
+            artifactId = "${project.group}.vidr"
+            version = "${project.version}"
+
+            artifact(tasks.named("jar"))
         }
     }
 }
