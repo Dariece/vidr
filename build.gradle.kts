@@ -1,8 +1,8 @@
 plugins {
     `java-gradle-plugin`
     `maven-publish`
-    id("org.springframework.boot") version "3.0.2"
-    id("io.spring.dependency-management") version "1.1.0"
+//    id("org.springframework.boot") version "3.0.2"
+//    id("io.spring.dependency-management") version "1.1.0"
 }
 
 group = "de.daniel.marlinghaus"
@@ -28,42 +28,45 @@ repositories {
 //}
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter")
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-    annotationProcessor("org.projectlombok:lombok")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+//    implementation("org.springframework.boot:spring-boot-starter")
+    compileOnly("org.projectlombok:lombok:1.18.26")
+//    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+    annotationProcessor("org.projectlombok:lombok:1.18.26")
+//    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 gradlePlugin {
     plugins {
-        create("vidr") {
+        create("${project.group}.vidr") {
             id = "${project.group}.vidr"
             implementationClass = "${project.group}.vidr.VIDRPlugin"
         }
     }
 }
 
-tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
-    enabled = false
-}
 
+//tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+//    enabled = false
+//}
+//
 tasks.getByName<Jar>("jar") {
     enabled = true
 }
 
-springBoot {
-    mainClass.set("de.daniel.marlinghaus.vidr.VIDRPlugin")
-}
+//springBoot {
+//    mainClass.set("de.daniel.marlinghaus.vidr.VIDRPlugin")
+//}
+
 
 publishing    {
     publications {
-        create<MavenPublication>("${project.group}.vidr") {
+        create<MavenPublication>(project.name) {
             groupId = "${project.group}"
-            artifactId = "${project.group}.vidr"
+            artifactId = project.name
             version = "${project.version}"
 
-            artifact(tasks.named("jar"))
+            from(components["java"])
+//            artifact(tasks.named("jar"))
         }
     }
 }

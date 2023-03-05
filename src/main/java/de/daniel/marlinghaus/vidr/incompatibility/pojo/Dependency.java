@@ -10,7 +10,8 @@ import javax.annotation.Nullable;
 import java.io.FileInputStream;
 import java.util.List;
 
-@Getter @Setter @SuperBuilder public class Dependency
+@Getter @Setter @SuperBuilder
+public class Dependency
     implements org.gradle.api.artifacts.Dependency {
 
     //inherited attributes
@@ -26,7 +27,6 @@ import java.util.List;
     private FileInputStream sourceCode;
     private FileInputStream byteCode;
     private List<Dependency> transitiveDependencies;
-
 
     //TODO implement
     @Override public boolean contentEquals(org.gradle.api.artifacts.Dependency dependency) {
