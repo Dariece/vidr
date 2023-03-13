@@ -28,10 +28,13 @@ repositories {
 //}
 
 dependencies {
+//    implementation("org.cyclonedx:cyclonedx-grade-plugin:1.7.4")
 //    implementation("org.springframework.boot:spring-boot-starter")
     compileOnly("org.projectlombok:lombok:1.18.26")
 //    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+    testImplementation("org.assertj:assertj-core:3.24.2")
 //    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
@@ -48,7 +51,7 @@ gradlePlugin {
 //tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
 //    enabled = false
 //}
-//
+
 tasks.getByName<Jar>("jar") {
     enabled = true
 }
