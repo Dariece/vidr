@@ -33,6 +33,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.26")
 //    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
     testImplementation("org.assertj:assertj-core:3.24.2")
 //    testImplementation("org.springframework.boot:spring-boot-starter-test")
