@@ -23,6 +23,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.26")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
 
+
     implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1"){
         exclude("org.slf4j:slf4j-api")
     }
@@ -30,7 +31,8 @@ dependencies {
         exclude("org.apache.maven:maven-core")
         exclude("org.slf4j:slf4j-api")
     }
-    implementation(gradleApi())
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.14.1")
+//    api(gradleApi())
 
     //Test the plugin functionalities
     testImplementation(gradleTestKit())
