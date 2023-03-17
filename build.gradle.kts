@@ -1,8 +1,6 @@
 plugins {
     `java-gradle-plugin`
     `maven-publish`
-//    id("org.springframework.boot") version "3.0.2"
-//    id("io.spring.dependency-management") version "1.1.0"
 }
 
 group = "de.daniel.marlinghaus"
@@ -21,46 +19,37 @@ repositories {
     mavenCentral()
 }
 
-//dependencyManagement {
-//    imports {
-//        mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
-//    }
-//}
-
 dependencies {
-//    implementation("org.cyclonedx:cyclonedx-grade-plugin:1.7.4")
-//    implementation("org.springframework.boot:spring-boot-starter")
     compileOnly("org.projectlombok:lombok:1.18.26")
-//    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     annotationProcessor("org.projectlombok:lombok:1.18.26")
-    implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
+
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1"){
+        exclude("org.slf4j:slf4j-api")
+    }
+    implementation("org.cyclonedx:cyclonedx-gradle-plugin:1.7.4"){
+        exclude("org.apache.maven:maven-core")
+        exclude("org.slf4j:slf4j-api")
+    }
+    implementation(gradleApi())
+
+    //Test the plugin functionalities
+    testImplementation(gradleTestKit())
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
     testImplementation("org.assertj:assertj-core:3.24.2")
-//    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 gradlePlugin {
     plugins {
         create("${project.group}.vidr") {
             id = "${project.group}.vidr"
-            implementationClass = "${project.group}.vidr.VIDRPlugin"
+            implementationClass = "${project.group}.vidr.VidrPlugin"
         }
     }
 }
 
-
-//tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
-//    enabled = false
-//}
-
 tasks.getByName<Jar>("jar") {
     enabled = true
 }
-
-//springBoot {
-//    mainClass.set("de.daniel.marlinghaus.vidr.VIDRPlugin")
-//}
-
 
 publishing    {
     publications {
@@ -70,11 +59,10 @@ publishing    {
             version = "${project.version}"
 
             from(components["java"])
-//            artifact(tasks.named("jar"))
         }
     }
 }
 
-tasks.withType<Test> {
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
