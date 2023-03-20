@@ -2,11 +2,14 @@ package de.daniel.marlinghaus.vidr;
 
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_SBOM;
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_VULNERABILITY_REPORT;
+import static de.daniel.marlinghaus.vidr.task.vo.CvssSeverity.CRITICAL;
+import static de.daniel.marlinghaus.vidr.task.vo.CvssSeverity.HIGH;
 
 import de.daniel.marlinghaus.vidr.task.CreateVulnerabilityReport;
 import de.daniel.marlinghaus.vidr.task.vo.ScanFormat;
 import de.daniel.marlinghaus.vidr.task.vo.ScanJob;
 import java.nio.file.Path;
+import java.util.List;
 import org.cyclonedx.gradle.CycloneDxTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -43,12 +46,13 @@ public class VidrPlugin implements Plugin<Project> {
     CreateVulnerabilityReport createVulnerabilityReportTask = tasks.register(
         CREATE_VULNERABILITY_REPORT.getName(), CreateVulnerabilityReport.class,
         (vulnReportTask) -> {
-          ScanJob scanJob = ScanJob.builder()
+          ScanJob scanJob = ScanJob.builder() // TODO make type nested in task
               .applicationName(projectName)
               .format(ScanFormat.SBOM)
               .stage(
-                  "local") //TODO get from environment variables (SPRING_PROFILES_ACTIVE) or default local
-              .pipelineRun("") //TODO get from environment variables or default empty
+                  "local") // TODO get from environment variables (SPRING_PROFILES_ACTIVE) or default local
+              .pipelineRun("") // TODO get from environment variables or default empty
+              .severities(List.of(HIGH, CRITICAL)) //TODO make configurable
               .build();
 
           vulnReportTask.setGroup(VidrGroups.REPORTING.getName());

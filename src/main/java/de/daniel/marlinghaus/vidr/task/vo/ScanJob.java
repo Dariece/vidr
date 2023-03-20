@@ -1,5 +1,6 @@
 package de.daniel.marlinghaus.vidr.task.vo;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -27,4 +28,9 @@ public class ScanJob {
    * Name of the dedicated pipelineRun
    */
   private String pipelineRun;
+
+  /**
+   * Severity list that filters the trivy report output
+   */
+  private List<CvssSeverity> severities;
 }
