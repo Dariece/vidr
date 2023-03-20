@@ -1,8 +1,9 @@
 package de.daniel.marlinghaus.vidr.utils.http;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.OutputStream;
 import org.apache.hc.client5.http.impl.classic.AbstractHttpClientResponseHandler;
 import org.apache.hc.core5.annotation.Contract;
 import org.apache.hc.core5.annotation.ThreadingBehavior;
@@ -13,7 +14,7 @@ import org.apache.hc.core5.http.HttpEntity;
  * Simple ResponseHandler to just return the responded IO-Stream
  */
 @Contract(threading = ThreadingBehavior.STATELESS)
-public class InputStreamHttpClientResponseHandler extends AbstractHttpClientResponseHandler<InputStream>{
+public class OutputStreamHttpClientResponseHandler extends AbstractHttpClientResponseHandler<OutputStream>{
 
   /**
    * @param entity of response
@@ -21,7 +22,9 @@ public class InputStreamHttpClientResponseHandler extends AbstractHttpClientResp
    * @throws IOException if stream is already closed
    */
   @Override
-  public InputStream handleEntity(final HttpEntity entity) throws IOException {
-    return entity.getContent();
+  public OutputStream handleEntity(final HttpEntity entity) throws IOException {
+    OutputStream out = new ByteArrayOutputStream();
+    entity.writeTo(out);
+    return out;
   }
 }

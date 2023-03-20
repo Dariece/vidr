@@ -27,6 +27,7 @@ dependencies {
     implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1"){
         exclude("org.slf4j:slf4j-api")
     }
+//    implementation("commons-io:commons-io:2.11.0")
     implementation("org.cyclonedx:cyclonedx-gradle-plugin:1.7.4"){
         exclude("org.apache.maven:maven-core")
         exclude("org.slf4j:slf4j-api")
