@@ -2,12 +2,12 @@ package de.daniel.marlinghaus.vidr;
 
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_SBOM;
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_VULNERABILITY_REPORT;
-import static de.daniel.marlinghaus.vidr.task.vo.CvssSeverity.CRITICAL;
-import static de.daniel.marlinghaus.vidr.task.vo.CvssSeverity.HIGH;
+import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.CRITICAL;
+import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.HIGH;
 
 import de.daniel.marlinghaus.vidr.task.CreateVulnerabilityReport;
-import de.daniel.marlinghaus.vidr.task.vo.ScanFormat;
-import de.daniel.marlinghaus.vidr.task.vo.ScanJob;
+import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanFormat;
+import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanJob;
 import de.daniel.marlinghaus.vidr.vulnerability.VulnerabilityIdentifier;
 import de.daniel.marlinghaus.vidr.vulnerability.VulnerabilityScanStrategyDeterminer;
 import java.nio.file.Path;
