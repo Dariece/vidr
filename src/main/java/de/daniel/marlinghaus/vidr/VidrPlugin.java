@@ -8,11 +8,14 @@ import static de.daniel.marlinghaus.vidr.task.vo.CvssSeverity.HIGH;
 import de.daniel.marlinghaus.vidr.task.CreateVulnerabilityReport;
 import de.daniel.marlinghaus.vidr.task.vo.ScanFormat;
 import de.daniel.marlinghaus.vidr.task.vo.ScanJob;
+import de.daniel.marlinghaus.vidr.vulnerability.VulnerabilityIdentifier;
+import de.daniel.marlinghaus.vidr.vulnerability.VulnerabilityScanStrategyDeterminer;
 import java.nio.file.Path;
 import java.util.List;
 import org.cyclonedx.gradle.CycloneDxTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.provider.Provider;
 
 public class VidrPlugin implements Plugin<Project> {
 
@@ -26,6 +29,16 @@ public class VidrPlugin implements Plugin<Project> {
     var tasks = targetProject.getTasks();
     String projectName = targetProject.getName();
     Path reportPath = targetProject.getBuildDir().toPath().resolve("reports");
+
+    // register shared services like several incompatibilityChecker or vulnerabilityScanners
+    Provider<VulnerabilityScanStrategyDeterminer> strategyDeterminer = targetProject.getGradle()
+        .getSharedServices()
+        .registerIfAbsent("vulnerabilityStrategyDeterminer",
+            VulnerabilityScanStrategyDeterminer.class,
+            spec -> spec.getParameters().getIdentifier()
+                .set(spec.getParameters().getIdentifier().getOrElse(
+                    VulnerabilityIdentifier.METADATA_DB_COMPARISION)));//TODO make configurable
+//    registerBuildServices(targetProject);
 
     // configure sbom creation
     CycloneDxTask createSbomTask = tasks.register(CREATE_SBOM.getName(),
@@ -56,6 +69,7 @@ public class VidrPlugin implements Plugin<Project> {
               .build();
 
           vulnReportTask.setGroup(VidrGroups.REPORTING.getName());
+          vulnReportTask.getStrategyDeterminer().set(strategyDeterminer);
           // define scan service default url
 //          vulnReportTask.getServiceUrl().set(
 //              vulnReportTask.getServiceUrl().getOrElse(URI.create("http://localhost:8100")));
@@ -69,5 +83,20 @@ public class VidrPlugin implements Plugin<Project> {
           vulnReportTask.mustRunAfter(createSbomTask);
         }
     ).get();
+  }
+
+  private void registerBuildServices(Project project) {
+//    project.getGradle().getSharedServices().registerIfAbsent("trivyClient", TrivyClientService.class, spec -> spec.getParameters().getServiceUrl().set(
+//        URI.create("http://localhost:8100")));
+
+//    project.getObjects().namedDomainObjectSet(VulnerabilityScanService.class);
+
+//    ExtensiblePolymorphicDomainObjectContainer<VulnerabilityScanService> vulnerabilityScanServices = project.getObjects()
+//        .polymorphicDomainObjectContainer(VulnerabilityScanService.class);
+//    vulnerabilityScanServices.registerBinding(VulnerabilityScanService.class, TrivyClientService.class);
+//    vulnerabilityScanServices.registerBinding(VulnerabilityScanService.class, SteadyClientService.class);
+//    vulnerabilityScanServices.register("trivyClient", TrivyClientService.class);
+//    vulnerabilityScanServices.register("steadyClient", SteadyClientService.class);
+
   }
 }

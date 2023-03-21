@@ -13,7 +13,7 @@ import org.apache.hc.core5.http.HttpEntity;
 /**
  * Simple ResponseHandler to just return the responded IO-Stream
  */
-@Contract(threading = ThreadingBehavior.STATELESS)
+@Contract(threading = ThreadingBehavior.UNSAFE)
 public class OutputStreamHttpClientResponseHandler extends AbstractHttpClientResponseHandler<OutputStream>{
 
   /**
