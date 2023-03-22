@@ -20,20 +20,28 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.projectlombok:lombok:1.18.26")
+    //to minimize boilerplate code like constructors/settes/getters and so on
+    compileOnly("org.projectlombok:lombok:1.18.26") {
+        exclude("org.slf4j:slf4j-api")
+    }
     annotationProcessor("org.projectlombok:lombok:1.18.26")
 
 
-    implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1"){
+    //to reach vulnerability scanners via http
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1") {
         exclude("org.slf4j:slf4j-api")
     }
+    //for using multimap
+    implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
+
+    //for creating sbom
 //    implementation("commons-io:commons-io:2.11.0")
-    implementation("org.cyclonedx:cyclonedx-gradle-plugin:1.7.4"){
+    implementation("org.cyclonedx:cyclonedx-gradle-plugin:1.7.4") {
         exclude("org.apache.maven:maven-core")
         exclude("org.slf4j:slf4j-api")
     }
+    //for serialization and deserialization of json
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.1")
-//    api(gradleApi())
 
     //Test the plugin functionalities
     testImplementation(gradleTestKit())
@@ -54,7 +62,7 @@ tasks.getByName<Jar>("jar") {
     enabled = true
 }
 
-publishing    {
+publishing {
     publications {
         create<MavenPublication>(project.name) {
             groupId = "${project.group}"
