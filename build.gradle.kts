@@ -33,6 +33,7 @@ dependencies {
     }
     //for using multimap
     implementation("org.eclipse.collections:eclipse-collections-api:11.1.0")
+    implementation("org.eclipse.collections:eclipse-collections:11.1.0")
 
     //for creating sbom
 //    implementation("commons-io:commons-io:2.11.0")
@@ -42,6 +43,9 @@ dependencies {
     }
     //for serialization and deserialization of json
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.1")
+    //for comparable dependency version
+//    implementation("com.fasterxml.jackson.core:jackson-core:2.14.1")
+//    implementation(gradleApi())
 
     //Test the plugin functionalities
     testImplementation(gradleTestKit())
