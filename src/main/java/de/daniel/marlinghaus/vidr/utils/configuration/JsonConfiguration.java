@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
+//TODO als shared service einbinden, damit Objekte wie objectMapper Singleton bleiben
 public final class JsonConfiguration {
 
   public static ObjectMapper objectMapper() {
