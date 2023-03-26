@@ -2,22 +2,29 @@ package de.daniel.marlinghaus.vidr;
 
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_SBOM;
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_VULNERABILITY_REPORT;
+import static de.daniel.marlinghaus.vidr.VidrTasks.RESOLVE_DEPENDENCY_FIX;
 import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.CRITICAL;
 import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.HIGH;
 
 import de.daniel.marlinghaus.vidr.task.CreateVulnerabilityReport;
-import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanFormat;
-import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanJob;
+import de.daniel.marlinghaus.vidr.task.ResolveDependencyFix;
+import de.daniel.marlinghaus.vidr.utils.string.StringUtils;
 import de.daniel.marlinghaus.vidr.vulnerability.VulnerabilityIdentifier;
 import de.daniel.marlinghaus.vidr.vulnerability.VulnerabilityScanStrategyDeterminer;
+import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanFormat;
+import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanJob;
 import java.nio.file.Path;
 import java.util.List;
 import org.cyclonedx.gradle.CycloneDxTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 
 public class VidrPlugin implements Plugin<Project> {
+
+
+  private ProviderFactory providerFactory;
 
   /**
    * Configures the needed tasks and their configuration to apply to the target project
@@ -27,6 +34,7 @@ public class VidrPlugin implements Plugin<Project> {
   @Override
   public void apply(Project targetProject) {
     var tasks = targetProject.getTasks();
+    providerFactory = targetProject.getProviders();
     String projectName = targetProject.getName();
     Path reportPath = targetProject.getBuildDir().toPath().resolve("reports");
 
@@ -58,12 +66,13 @@ public class VidrPlugin implements Plugin<Project> {
     // configure vuln report creation
     CreateVulnerabilityReport createVulnerabilityReportTask = tasks.register(
         CREATE_VULNERABILITY_REPORT.getName(), CreateVulnerabilityReport.class,
-        (vulnReportTask) -> {
+        vulnReportTask -> {
+
+          String stage = getPropertyValue(null, null, "SPRING_PROFILES_ACTIVE");
           ScanJob scanJob = ScanJob.builder() // TODO make type nested in task
               .applicationName(projectName)
               .format(ScanFormat.SBOM)
-              .stage(
-                  "local") // TODO get from environment variables (SPRING_PROFILES_ACTIVE) or default local
+              .stage(StringUtils.notBlank(stage) ? stage : "local")
               .pipelineRun("") // TODO get from environment variables or default empty
               .severities(List.of(HIGH, CRITICAL)) //TODO make configurable
               .build();
@@ -81,8 +90,19 @@ public class VidrPlugin implements Plugin<Project> {
           // define execution order
           vulnReportTask.dependsOn(createSbomTask);
           vulnReportTask.mustRunAfter(createSbomTask);
-        }
-    ).get();
+        }).get();
+
+    //configure
+    ResolveDependencyFix resolveDependencyFix = tasks.register(RESOLVE_DEPENDENCY_FIX.getName(),
+        ResolveDependencyFix.class,
+        resolveDependencyFixTask -> {
+          //TODO configure
+          resolveDependencyFixTask.setReportFile(createVulnerabilityReportTask.getOutputFile());
+
+          // define execution order
+          resolveDependencyFixTask.dependsOn(createVulnerabilityReportTask);
+          resolveDependencyFixTask.mustRunAfter(createVulnerabilityReportTask);
+        }).get();
   }
 
   private void registerBuildServices(Project project) {
@@ -98,5 +118,22 @@ public class VidrPlugin implements Plugin<Project> {
 //    vulnerabilityScanServices.register("trivyClient", TrivyClientService.class);
 //    vulnerabilityScanServices.register("steadyClient", SteadyClientService.class);
 
+  }
+
+  //TODO write Util Buildservice for this
+  private String getPropertyValue(String systemPropertyName, String gradlePropertyName,
+      String environmentName) {
+    String retVal = "";
+
+    //for details refer to gradle doc: https://docs.gradle.org/current/userguide/build_environment.html
+    if (StringUtils.notBlank(systemPropertyName)) {
+      retVal = providerFactory.systemProperty(systemPropertyName).getOrElse(retVal);
+    } else if (StringUtils.notBlank(gradlePropertyName)) {
+      retVal = providerFactory.gradleProperty(gradlePropertyName).getOrElse(retVal);
+    } else {
+      retVal = providerFactory.environmentVariable(environmentName).getOrElse(retVal);
+    }
+
+    return retVal;
   }
 }
