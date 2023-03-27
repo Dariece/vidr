@@ -76,6 +76,9 @@ public class VidrPlugin implements Plugin<Project> {
               .pipelineRun("") // TODO get from environment variables or default empty
               .severities(List.of(HIGH, CRITICAL)) //TODO make configurable
               .build();
+          Path scanObjectFile = createSbomTask.getDestination().get().toPath()
+              .resolve(createSbomTask.getOutputName()
+                  .get() + ".json");
 
           vulnReportTask.setGroup(VidrGroups.REPORTING.getName());
           vulnReportTask.getStrategyDeterminer().set(strategyDeterminer);
@@ -83,9 +86,13 @@ public class VidrPlugin implements Plugin<Project> {
 //          vulnReportTask.getServiceUrl().set(
 //              vulnReportTask.getServiceUrl().getOrElse(URI.create("http://localhost:8100")));
           vulnReportTask.setScanObjectFile(
-              createSbomTask.getDestination().get().toPath().resolve(createSbomTask.getOutputName()
-                  .get() + ".json"));
+              scanObjectFile);
           vulnReportTask.setScanJob(scanJob);
+          vulnReportTask.setOutputFile(scanObjectFile.getParent().resolve(
+              String.format("%s-%s-%s-trivy-report.json",
+                  scanJob.getApplicationName(),
+                  scanJob.getStage(),
+                  scanJob.getPipelineRun())));// define output filename depending on scanJob
 
           // define execution order
           vulnReportTask.dependsOn(createSbomTask);

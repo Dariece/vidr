@@ -15,71 +15,96 @@ import org.gradle.api.DomainObjectSet;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolvedConfiguration;
-import org.gradle.api.internal.artifacts.dependencies.DefaultImmutableVersionConstraint;
-import org.gradle.api.internal.catalog.DependencyModel;
+import org.gradle.api.artifacts.result.ResolutionResult;
+import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class ResolveDependencyFix extends DefaultTask {
 
   //TODO resolve services dynamically by strategy
   private final VulnerabilityReportDeserializer<TrivyVulnerability> reportDeserializer = new TrivyReportDeserializer();
-  private final VulnerableDependencyFixResolver dependencyFixResolver = new VulnerableDependencyFixResolver(
+  private final VulnerableDependencyFixResolver<TrivyReportDeserializer> dependencyFixResolver = new VulnerableDependencyFixResolver(
       reportDeserializer);
   @Setter
   private Path reportFile;
 
   @TaskAction
   void run() {
-    var configurationHandler = getProject().getConfigurations();
     try {
       //just testing: prototyping make generalizable
       //get vulnerable dependencies
+      getLogger().info("Start deserialze report {}", reportFile);
       VulnerabilityReport deserializedReport = reportDeserializer.deserialize(
           reportFile);
+      getLogger().quiet("Successful deserialized report");
+
+      getLogger().info("Start resolve fix versions for vulnerable dependencies");
       List<GavVulnerableDependency> vulnerableFixableDependencies = dependencyFixResolver.resolveFixes(
           deserializedReport.getVulnerabilities());
+      getLogger().debug("Fixable dependencies: {}", vulnerableFixableDependencies);
+      getLogger().quiet("Successful resolved fix versions for vulnerable dependencies");
       if (!dependencyFixResolver.getUnfixableVulnerabilities().isEmpty()
           || !dependencyFixResolver.getUnfixableDependencies().isEmpty()) {
-        getLogger().warn("Following Vulnerabilities are not fixable: {}",
+        getLogger().warn("{} vulnerable dependencies are not fixable. See report for details",
+            dependencyFixResolver.getUnfixableDependencies().size());
+        getLogger().debug("Following vulnerabilities are not fixable: {}",
             dependencyFixResolver.getUnfixableVulnerabilities());
-        getLogger().warn("Following vulnerable Dependencies are not fixable: {}",
+        getLogger().debug("Following vulnerable dependencies are not fixable: {}",
             dependencyFixResolver.getUnfixableDependencies());
       }
 
       //ändere die versionen der betroffenen dependencies auf die gefixten
       var dependencyHandler = getProject().getDependencies();
+      var configurationContainer = getProject().getConfigurations();
 //      ExternalModuleDependencyFactory dependencyFactory = new DefaultExternalDependencyFactory();
-//    dependencyHandler.add("ConfigurationName", DependencyNotationObject)
-//    Dependency implementation = dependencyHandler.add("implementation", new GavVulnerableDependency());
-      Configuration compileClasspath = configurationHandler.getByName("compileClasspath");
-      var dependencySet = compileClasspath.getDependencies();
+      Configuration implementationConfiguration = configurationContainer.getByName(
+          "implementation");
+      ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming();
+//      var dependencySet = implementationConfiguration.getDependencies();
+      var dependencySet = resolvableDependencies.getDependencies();
+      getLogger().info("implementationConfiguration dependencies: {}",
+          dependencySet.stream().toList());
 
+      getLogger().info("Change vulnerable dependency versions to fixed");
       //add changed dependencies
       //gemeinsame Version bei Frameworks z. B. gemeinsame Group org.springframework beachten
       vulnerableFixableDependencies.forEach(
           vulnerableDependency -> {
             DomainObjectSet<Dependency> matchingDependencies = dependencySet.matching(
-                dependency -> dependency.getName().equals(vulnerableDependency.getArtifact())
-                    && dependency.getGroup().equals(vulnerableDependency.getGroup())
-                    && dependency.getVersion().equals(vulnerableDependency.getVersion()));
+                dependency -> vulnerableDependency.getArtifact().equals(dependency.getName())
+                    && vulnerableDependency.getGroup().equals(dependency.getGroup()));
             if (!matchingDependencies.isEmpty()) {
+              getLogger().info("Match consisting of: {}", matchingDependencies.stream().toList());
               dependencySet.removeAll(matchingDependencies);
-              dependencySet.add(dependencyHandler.add("implementation",
-                  new DependencyModel(vulnerableDependency.getGroup(),
-                      vulnerableDependency.getArtifact(), vulnerableDependency.getVersion(),
-                      new DefaultImmutableVersionConstraint(vulnerableDependency.getVersion()),
-                      this.getClass().getName())));//TODO generalize
+              //TODO debug
+              dependencySet.add(dependencyHandler.add(implementationConfiguration.getName(),
+                  new DefaultExternalModuleDependency(vulnerableDependency.getGroup(),
+                      vulnerableDependency.getArtifact(),
+                      vulnerableDependency.getFixVersion())));//TODO generalize
+            } else {
+              getLogger().error("No match for: {}", vulnerableDependency.getDependencyName());
             }
           });
 
       //resolves and downloads configuration (dependency changes)
-      ResolvedConfiguration resolvedConfiguration = compileClasspath.getResolvedConfiguration(); //TODO analyze
-//    configurationHandler.detachedConfiguration(implementation);
+      ResolutionResult resolutionResult = resolvableDependencies.getResolutionResult();//TODO analyze
+      getLogger().info("Resolution result: {}",resolutionResult.getAllDependencies());
+      ResolvedConfiguration resolvedConfiguration = implementationConfiguration.getResolvedConfiguration(); //TODO analyze
+      getLogger().quiet("Successful changed vulnerable dependency versions to fixed");
+      vulnerableFixableDependencies.forEach(
+          v -> getLogger().quiet("{} {}", resolvedConfiguration.getFirstLevelModuleDependencies(
+              d -> d.getName().equals(v.getArtifact())), v)
+      );
+//      ResolvedConfiguration resolvedConfiguration = configurationContainer.detachedConfiguration(
+//          dependencySet.toArray(new Dependency[0])).getResolvedConfiguration(); //TODO analyze
+//      getLogger().quiet("{}, {}", dependencySet.toArray(new Dependency[0]),resolvedConfiguration.getFirstLevelModuleDependencies());
 
       //baue das projekt mit den geänderten Versionen oder erstelle neue sbom, je nach implementierung für prüfung
       //was wenn nicht baubar? Kann Plugin weiterlaufen?
     } catch (IOException e) {
+      getLogger().error(" {} {}", e.getCause(), e.getMessage());
       throw new GradleException("An error occurred executing " + this.getClass().getName(),
           e); //TODO failure handling
     }

@@ -14,3 +14,9 @@ Vulnerability Incompatible Dependencies Resolver
     github.com/aquasecurity/trivy/pkg/cache.RemoteCache.PutBlob
     /home/runner/work/trivy/trivy/pkg/cache/remote.go:52
   - twirp error unavailable: Error from intermediary with HTTP status code 503 "Service Unavailable"
+ 
+## lines of code
+```bash
+find src/main -name '*.java' | xargs grep -v '^\s*$' | wc -l
+```
+^\s*$|\/\*(.|[\r\n])*?\*\/|^(\s)*?(\/\/)(.)*?$
