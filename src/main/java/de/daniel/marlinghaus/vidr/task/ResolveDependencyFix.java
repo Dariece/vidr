@@ -1,5 +1,6 @@
 package de.daniel.marlinghaus.vidr.task;
 
+import de.daniel.marlinghaus.vidr.task.action.OverrideDependencyVersion;
 import de.daniel.marlinghaus.vidr.vulnerability.report.TrivyReportDeserializer;
 import de.daniel.marlinghaus.vidr.vulnerability.report.VulnerabilityReportDeserializer;
 import de.daniel.marlinghaus.vidr.vulnerability.report.vo.VulnerabilityReport;
@@ -18,7 +19,6 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.result.ResolutionResult;
-import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class ResolveDependencyFix extends DefaultTask {
@@ -60,8 +60,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       var configurationContainer = getProject().getConfigurations();
 //      ExternalModuleDependencyFactory dependencyFactory = new DefaultExternalDependencyFactory();
       Configuration implementationConfiguration = configurationContainer.getByName(
-          "implementation");
-      ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming();
+          "runtimeClasspath");
+      ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
 //      var dependencySet = implementationConfiguration.getDependencies();
       var dependencySet = resolvableDependencies.getDependencies();
       getLogger().info("implementationConfiguration dependencies: {}",
@@ -73,29 +73,26 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       vulnerableFixableDependencies.forEach(
           vulnerableDependency -> {
             DomainObjectSet<Dependency> matchingDependencies = dependencySet.matching(
-                dependency -> vulnerableDependency.getArtifact().equals(dependency.getName())
+                dependency -> vulnerableDependency.getName().equals(dependency.getName())
                     && vulnerableDependency.getGroup().equals(dependency.getGroup()));
             if (!matchingDependencies.isEmpty()) {
               getLogger().info("Match consisting of: {}", matchingDependencies.stream().toList());
-              dependencySet.removeAll(matchingDependencies);
-              //TODO debug
-              dependencySet.add(dependencyHandler.add(implementationConfiguration.getName(),
-                  new DefaultExternalModuleDependency(vulnerableDependency.getGroup(),
-                      vulnerableDependency.getArtifact(),
-                      vulnerableDependency.getFixVersion())));//TODO generalize
+              new OverrideDependencyVersion(vulnerableDependency).execute(
+                  implementationConfiguration);
             } else {
-              getLogger().error("No match for: {}", vulnerableDependency.getDependencyName());
+              getLogger().error("No match for: {}",
+                  vulnerableDependency.getDependencyName());//TODO use other configuration if not found
             }
           });
 
       //resolves and downloads configuration (dependency changes)
       ResolutionResult resolutionResult = resolvableDependencies.getResolutionResult();//TODO analyze
-      getLogger().info("Resolution result: {}",resolutionResult.getAllDependencies());
+      getLogger().info("Resolution result: {}", resolutionResult.getAllDependencies());
       ResolvedConfiguration resolvedConfiguration = implementationConfiguration.getResolvedConfiguration(); //TODO analyze
       getLogger().quiet("Successful changed vulnerable dependency versions to fixed");
       vulnerableFixableDependencies.forEach(
           v -> getLogger().quiet("{} {}", resolvedConfiguration.getFirstLevelModuleDependencies(
-              d -> d.getName().equals(v.getArtifact())), v)
+              d -> d.getName().equals(v.getName())), v)
       );
 //      ResolvedConfiguration resolvedConfiguration = configurationContainer.detachedConfiguration(
 //          dependencySet.toArray(new Dependency[0])).getResolvedConfiguration(); //TODO analyze

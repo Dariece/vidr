@@ -16,7 +16,11 @@ Vulnerability Incompatible Dependencies Resolver
   - twirp error unavailable: Error from intermediary with HTTP status code 503 "Service Unavailable"
  
 ## lines of code
+Ohne leere Zeilen
 ```bash
 find src/main -name '*.java' | xargs grep -v '^\s*$' | wc -l
 ```
-^\s*$|\/\*(.|[\r\n])*?\*\/|^(\s)*?(\/\/)(.)*?$
+Ohne leere Zeilen und Kommentare
+```bash
+find src/main -name '*.java' | xargs grep -vP '^\s*$|\/\*(.|[\r\n])*?\*\/|^(\s)*?(\/\/)+(.)*?$' | wc -l
+```
