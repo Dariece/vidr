@@ -19,14 +19,12 @@ public class CustomVersionNumber extends VersionNumber {
 
   @Override
   public String toString() {
-
-//    if(this.getPatch() == 0){
-//
-//    }
-
-    return super.toString();
-//    return String.format(VERSION_TEMPLATE, this.getMajor(), this.getMinor(), this.getMicro(),
-//        this.getPatch(), this.getQualifier() == null ? "" : "-" + this.getQualifier());
+    var retVal = super.toString();
+    if (this.getPatch() == 0 && this.getMicro() == 0) {
+      return retVal.substring(0, retVal.length() - 2);
+    } else {
+      return retVal;
+    }
   }
 
   public static CustomVersionNumber parse(String versionString) {

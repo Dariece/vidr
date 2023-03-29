@@ -5,7 +5,7 @@ import de.daniel.marlinghaus.vidr.vulnerability.report.TrivyReportDeserializer;
 import de.daniel.marlinghaus.vidr.vulnerability.report.VulnerabilityReportDeserializer;
 import de.daniel.marlinghaus.vidr.vulnerability.report.vo.VulnerabilityReport;
 import de.daniel.marlinghaus.vidr.vulnerability.report.vo.trivy.TrivyVulnerability;
-import de.daniel.marlinghaus.vidr.vulnerability.resolve.VulnerableDependencyFixResolver;
+import de.daniel.marlinghaus.vidr.vulnerability.resolve.VulnerableDependencyFixVersionResolver;
 import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.GavVulnerableDependency;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -25,7 +25,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
 
   //TODO resolve services dynamically by strategy
   private final VulnerabilityReportDeserializer<TrivyVulnerability> reportDeserializer = new TrivyReportDeserializer();
-  private final VulnerableDependencyFixResolver<TrivyReportDeserializer> dependencyFixResolver = new VulnerableDependencyFixResolver(
+  private final VulnerableDependencyFixVersionResolver<TrivyReportDeserializer> dependencyFixResolver = new VulnerableDependencyFixVersionResolver(
       reportDeserializer);
   @Setter
   private Path reportFile;
@@ -41,7 +41,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       getLogger().quiet("Successful deserialized report");
 
       getLogger().info("Start resolve fix versions for vulnerable dependencies");
-      List<GavVulnerableDependency> vulnerableFixableDependencies = dependencyFixResolver.resolveFixes(
+      List<GavVulnerableDependency> vulnerableFixableDependencies = dependencyFixResolver.resolveFixVersions(
           deserializedReport.getVulnerabilities());
       getLogger().debug("Fixable dependencies: {}", vulnerableFixableDependencies);
       getLogger().quiet("Successful resolved fix versions for vulnerable dependencies");

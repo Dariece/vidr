@@ -14,6 +14,11 @@ Vulnerability Incompatible Dependencies Resolver
     github.com/aquasecurity/trivy/pkg/cache.RemoteCache.PutBlob
     /home/runner/work/trivy/trivy/pkg/cache/remote.go:52
   - twirp error unavailable: Error from intermediary with HTTP status code 503 "Service Unavailable"
+- Trivy (CVE?) lässt quantifier bei fix-versionen weg 
+  - Beispiel Guava: fixVersion 30.0, echte version 30.0-jre
+  - Ungenauigkeit der Beschreibung
+  - Keine einheitliche Versionskonvention in Dependency-Repositories wie Mavencentral spring-web v. 6.0.0
+
  
 ## lines of code
 Ohne leere Zeilen
