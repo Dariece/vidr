@@ -99,7 +99,7 @@ public class VidrPlugin implements Plugin<Project> {
           vulnReportTask.mustRunAfter(createSbomTask);
         }).get();
 
-    //configure
+    //configure dependency fix resolve
     ResolveDependencyFix resolveDependencyFix = tasks.register(RESOLVE_DEPENDENCY_FIX.getName(),
         ResolveDependencyFix.class,
         resolveDependencyFixTask -> {
@@ -109,6 +109,25 @@ public class VidrPlugin implements Plugin<Project> {
           // define execution order
           resolveDependencyFixTask.dependsOn(createVulnerabilityReportTask);
           resolveDependencyFixTask.mustRunAfter(createVulnerabilityReportTask);
+        }).get();
+
+    //TODO vorhandene Duplikate an Dependencies und falschen transitiven Abhängigkeitsversionen vermeiden
+    CycloneDxTask createFixedSbomTask = tasks.register(CREATE_SBOM.getName() + "Fixed",
+        CycloneDxTask.class,
+        sbomTask -> {
+          sbomTask.setGroup(VidrGroups.REPORTING.getName());
+          sbomTask.setProjectType("application");
+          sbomTask.setSchemaVersion("1.4");
+          sbomTask.setDestination(reportPath.toFile());
+          sbomTask.setOutputName(
+              String.format("%s-%s-sbom-fixed", projectName, targetProject.getVersion()));
+          sbomTask.setOutputFormat("json");
+          sbomTask.setIncludeBomSerialNumber(false);
+          sbomTask.setComponentVersion("2.0.0");
+
+          // define execution order
+          sbomTask.dependsOn(resolveDependencyFix);
+          sbomTask.mustRunAfter(resolveDependencyFix);
         }).get();
   }
 

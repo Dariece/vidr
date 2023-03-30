@@ -1,5 +1,7 @@
 package de.daniel.marlinghaus.vidr.task;
 
+import static org.eclipse.collections.api.factory.Lists.immutable;
+
 import de.daniel.marlinghaus.vidr.task.action.OverrideDependencyVersion;
 import de.daniel.marlinghaus.vidr.vulnerability.report.TrivyReportDeserializer;
 import de.daniel.marlinghaus.vidr.vulnerability.report.VulnerabilityReportDeserializer;
@@ -10,15 +12,21 @@ import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.GavVulnerableDependen
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Setter;
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.DomainObjectSet;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvableDependencies;
+import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.result.ResolutionResult;
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class ResolveDependencyFix extends DefaultTask {
@@ -29,6 +37,9 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       reportDeserializer);
   @Setter
   private Path reportFile;
+
+  private List<GavVulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
+  private List<GavVulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
 
   @TaskAction
   void run() {
@@ -55,55 +66,122 @@ public abstract class ResolveDependencyFix extends DefaultTask {
             dependencyFixResolver.getUnfixableDependencies());
       }
 
-      //ändere die versionen der betroffenen dependencies auf die gefixten
-      var dependencyHandler = getProject().getDependencies();
-      var configurationContainer = getProject().getConfigurations();
-//      ExternalModuleDependencyFactory dependencyFactory = new DefaultExternalDependencyFactory();
-      Configuration implementationConfiguration = configurationContainer.getByName(
-          "runtimeClasspath");
-      ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
-//      var dependencySet = implementationConfiguration.getDependencies();
-      var dependencySet = resolvableDependencies.getDependencies();
-      getLogger().info("implementationConfiguration dependencies: {}",
-          dependencySet.stream().toList());
+      ResolvedConfiguration resolvedConfiguration = overrideDepencyVersiontoFixed(
+          vulnerableFixableDependencies, new AtomicBoolean(false));
 
-      getLogger().info("Change vulnerable dependency versions to fixed");
-      //add changed dependencies
-      //gemeinsame Version bei Frameworks z. B. gemeinsame Group org.springframework beachten
-      vulnerableFixableDependencies.forEach(
-          vulnerableDependency -> {
-            DomainObjectSet<Dependency> matchingDependencies = dependencySet.matching(
-                dependency -> vulnerableDependency.getName().equals(dependency.getName())
-                    && vulnerableDependency.getGroup().equals(dependency.getGroup()));
-            if (!matchingDependencies.isEmpty()) {
-              getLogger().info("Match consisting of: {}", matchingDependencies.stream().toList());
-              new OverrideDependencyVersion(vulnerableDependency).execute(
-                  implementationConfiguration);
-            } else {
-              getLogger().error("No match for: {}",
-                  vulnerableDependency.getDependencyName());//TODO use other configuration if not found
-            }
-          });
-
-      //resolves and downloads configuration (dependency changes)
-      ResolutionResult resolutionResult = resolvableDependencies.getResolutionResult();//TODO analyze
-      getLogger().info("Resolution result: {}", resolutionResult.getAllDependencies());
-      ResolvedConfiguration resolvedConfiguration = implementationConfiguration.getResolvedConfiguration(); //TODO analyze
-      getLogger().quiet("Successful changed vulnerable dependency versions to fixed");
-      vulnerableFixableDependencies.forEach(
-          v -> getLogger().quiet("{} {}", resolvedConfiguration.getFirstLevelModuleDependencies(
-              d -> d.getName().equals(v.getName())), v)
-      );
-//      ResolvedConfiguration resolvedConfiguration = configurationContainer.detachedConfiguration(
-//          dependencySet.toArray(new Dependency[0])).getResolvedConfiguration(); //TODO analyze
-//      getLogger().quiet("{}, {}", dependencySet.toArray(new Dependency[0]),resolvedConfiguration.getFirstLevelModuleDependencies());
-
-      //baue das projekt mit den geänderten Versionen oder erstelle neue sbom, je nach implementierung für prüfung
-      //was wenn nicht baubar? Kann Plugin weiterlaufen?
+      //TODO baue das projekt mit den geänderten Versionen oder erstelle neue sbom, je nach implementierung für prüfung
+      //was wenn nicht baubar? Kann Plugin weiterlaufen? -> scheinbar nein
     } catch (IOException e) {
       getLogger().error(" {} {}", e.getCause(), e.getMessage());
       throw new GradleException("An error occurred executing " + this.getClass().getName(),
           e); //TODO failure handling
     }
+  }
+
+  /**
+   * Recursively try to override dependency versions to fixed
+   *
+   * @param vulnerableFixableDependencies
+   * @param isRetryable
+   * @return
+   */
+  //TODO refactor
+  private ResolvedConfiguration overrideDepencyVersiontoFixed(
+      List<GavVulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
+    //ändere die versionen der betroffenen dependencies auf die gefixten
+    var configurationContainer = getProject().getConfigurations();
+    Configuration implementationConfiguration = configurationContainer.getByName(
+        "runtimeClasspath");
+    ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
+    var dependencySet = resolvableDependencies.getDependencies();
+    getLogger().info("implementationConfiguration dependencies: {}",
+        dependencySet.stream().toList());
+
+    getLogger().info("Change vulnerable dependency versions to fixed");
+    //add changed dependencies
+    AtomicInteger springBootCount = new AtomicInteger(0);
+    vulnerableFixableDependencies.forEach(
+        vulnerableDependency -> {
+          DomainObjectSet<Dependency> matchingDependencies = dependencySet.matching(
+              dependency -> vulnerableDependency.getName().equals(dependency.getName())
+                  && vulnerableDependency.getGroup().equals(dependency.getGroup()));
+          //workaround framework spring
+          if (!matchingDependencies.isEmpty() && vulnerableDependency.isSpringBootDependency()
+              && springBootCount.getAndIncrement() > 0) {
+            //gemeinsame Version bei Frameworks z. B. gemeinsame Group org.springframework beachten
+            //Only write substition rule once
+            getLogger().warn("Spring boot version already resolved for: {}",
+                vulnerableDependency.getDependencyName());
+          } else if (!matchingDependencies.isEmpty()) {
+            directResolvableDependencies.add(vulnerableDependency);
+            getLogger().info("Match consisting of: {}", matchingDependencies.stream().toList());
+            new OverrideDependencyVersion(vulnerableDependency).execute(
+                implementationConfiguration);
+          } else {
+            //Transitive dependencies or test configurations fail
+            this.unresolvableDependencies.add(vulnerableDependency);
+            getLogger().error("No match for: {}",
+                vulnerableDependency.getDependencyName());
+            //TODO use other configuration if not found
+            //TODO find direct dependency with usage later on
+          }
+        });
+
+    ResolvedConfiguration resolvedConfiguration;
+    //evaluate resolution before resolve dependencies
+    ResolutionResult resolutionResult = resolvableDependencies.getResolutionResult();
+//        getLogger().info("Resolution result: {}", resolutionResult.getAllDependencies());
+    List<UnresolvedDependencyResult> unresolvedDependencyResults = (List<UnresolvedDependencyResult>) resolutionResult.getAllDependencies()
+        .stream()
+        .filter(r -> r instanceof UnresolvedDependencyResult).toList();
+    ImmutableList<GavVulnerableDependency> gavVulnerableDependencies = immutable.ofAll(
+        vulnerableFixableDependencies);
+    if (unresolvedDependencyResults.isEmpty()) {
+      //resolves and downloads configuration (dependency changes)
+      resolvedConfiguration = implementationConfiguration.getResolvedConfiguration(); //TODO analyze
+//      vulnerableFixableDependencies.forEach(
+//          v -> getLogger().quiet("{} {}", resolvedConfiguration.getFirstLevelModuleDependencies(
+//              d -> d.getName().equals(v.getName())), v)
+//      );
+      resolvedConfiguration.rethrowFailure();
+      getLogger().quiet("Successful changed vulnerable dependency versions to fixed");
+    } else {
+      //failure handling (jackson)
+      List<String> unresolvedDependencyNames = unresolvedDependencyResults.stream().map(
+          unresolvedDependencyResult -> {
+            String displayName = unresolvedDependencyResult.getRequested().getDisplayName();
+            //TODO don't do foreach loops for two lists, just use unresolvedDependencyResult.getFrom()?
+            resolutionResult.getAllComponents().forEach(c -> c.getDependencies().stream()
+                .filter(d -> d.getRequested().getDisplayName().equals(displayName))
+                .forEach(d -> {
+                  var identifier = c.getModuleVersion();
+                  GavVulnerableDependency match = gavVulnerableDependencies.detect(
+                      vd -> vd.isSameFixGAV(identifier.getGroup(), identifier.getName(),
+                          identifier.getVersion()));
+                  getLogger().quiet("match: {}, dependencyResult: {}", match,
+                      identifier);//TODO remove after debugging
+                  //override version with other fix version
+                  if (match != null) {
+                    isRetryable.set(match.nextFixVersion());
+                    getLogger().quiet("!!!!!!!!!!!!!! {} {}", identifier,
+                        match.getFixVersion());//TODO remove after debugging
+                  }
+                }));
+            return displayName.substring(0, displayName.lastIndexOf(":"));
+          }).distinct().toList();
+      getLogger().error("Unresolved dependencies: {}", unresolvedDependencyNames);
+      if (isRetryable.get()) {
+        //retry override version
+        getLogger().error("Couldn't resolve all dependencies. Retry version override");
+        isRetryable.set(false);
+        overrideDepencyVersiontoFixed(vulnerableFixableDependencies, isRetryable);
+        //TODO Doesn't work: > Cannot change resolution strategy of dependency configuration ':runtimeClasspath' after it has been resolved.
+      }
+
+      throw new ResolveException(": Vulnerable dependency version override",
+          Lists.immutable.ofAll(unresolvedDependencyResults)
+              .collect(UnresolvedDependencyResult::getFailure));
+    }
+    return resolvedConfiguration;
   }
 }

@@ -31,19 +31,29 @@ public class AddOverrideDependencyVersionDetails implements Action<DependencyRes
     String overrideVersion = dependency.getFixVersion();
     ModuleVersionSelector requested = dependencyResolveDetails.getRequested();
     if (overrideVersion != null) {
-      if (requested.getName().equals(dependency.getName())
+      //workaround for framework spring (boot)
+      if (requested.getGroup().equals(dependency.getGroup())
+          && dependency.isSpringBootDependency()) {
+        changeVersion(dependencyResolveDetails, overrideVersion);
+      } else if (requested.getName().equals(dependency.getName())
           && requested.getGroup().equals(dependency.getGroup())) {
-        dependencyResolveDetails.because(
-                String.format("VIDR: %s needs to be overwritten from %s to %s due to %s",
-                    dependency.getDependencyName(),
-                    dependencyResolveDetails.getTarget().getVersion(),
-                    overrideVersion,
-                    "vulnerability"))//TODO pass reason somehow
-            .useVersion(overrideVersion);
+        changeVersion(dependencyResolveDetails, overrideVersion);
       }
     } else {
       throw new GradleException(
           this.getClass().getName() + ": override version of dependency cannot be empty.");
     }
   }
+
+  private void changeVersion(DependencyResolveDetails dependencyResolveDetails,
+      String overrideVersion) {
+    dependencyResolveDetails.because(
+            String.format("VIDR: %s needs to be overwritten from %s to %s due to %s",
+                dependency.getDependencyName(),
+                dependencyResolveDetails.getTarget().getVersion(),
+                overrideVersion,
+                "vulnerability"))//TODO pass reason somehow
+        .useVersion(overrideVersion);
+  }
+
 }

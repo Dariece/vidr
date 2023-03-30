@@ -21,11 +21,10 @@ public class OverrideDependencyVersion implements Action<Configuration> {
    */
   @Override
   public void execute(Configuration configuration) {
-    if(configuration.isCanBeResolved()) {
+    if (configuration.isCanBeResolved()) {
       var actualForcedModules = configuration.getResolutionStrategy().getForcedModules();
       configuration.getResolutionStrategy()
           .eachDependency(new AddOverrideDependencyVersionDetails(dependency));
-
       if (!actualForcedModules.isEmpty()) {
         actualForcedModules.add(dependency.copyFix());
         // logger.info("Replacing force override of {} with {} ", requestedGAV, aligned);

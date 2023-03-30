@@ -18,6 +18,9 @@ Vulnerability Incompatible Dependencies Resolver
   - Beispiel Guava: fixVersion 30.0, echte version 30.0-jre
   - Ungenauigkeit der Beschreibung
   - Keine einheitliche Versionskonvention in Dependency-Repositories wie Mavencentral spring-web v. 6.0.0
+- Dependencies die mit BOMs arbeiten können falsche versionen referenzieren
+  - Beispiel: jackson-databind:2.13.4.1 referenziert jackson-bom:2.13.4.1 welche nicht existiert
+- Transitive Abhängigkeiten mit Sicherheitslücken werden nicht behoben, da das Risiko einer Inkompatibilität zu direkten Abhängigkeiten bei Versionsänderungen zu groß ist
 
  
 ## lines of code
