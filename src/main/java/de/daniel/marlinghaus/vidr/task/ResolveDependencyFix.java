@@ -1,6 +1,7 @@
 package de.daniel.marlinghaus.vidr.task;
 
 import static org.eclipse.collections.api.factory.Lists.immutable;
+import static org.gradle.api.plugins.JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME;
 
 import de.daniel.marlinghaus.vidr.task.action.OverrideDependencyVersion;
 import de.daniel.marlinghaus.vidr.vulnerability.report.TrivyReportDeserializer;
@@ -90,8 +91,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       List<GavVulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
     //ändere die versionen der betroffenen dependencies auf die gefixten
     var configurationContainer = getProject().getConfigurations();
-    Configuration implementationConfiguration = configurationContainer.getByName(
-        "runtimeClasspath");
+    Configuration implementationConfiguration = configurationContainer.getByName(RUNTIME_CLASSPATH_CONFIGURATION_NAME);
     ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
     var dependencySet = resolvableDependencies.getDependencies();
     getLogger().info("implementationConfiguration dependencies: {}",

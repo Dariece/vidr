@@ -18,6 +18,7 @@ import java.util.List;
 import org.cyclonedx.gradle.CycloneDxTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 
@@ -109,6 +110,8 @@ public class VidrPlugin implements Plugin<Project> {
           // define execution order
           resolveDependencyFixTask.dependsOn(createVulnerabilityReportTask);
           resolveDependencyFixTask.mustRunAfter(createVulnerabilityReportTask);
+          //build after to safe result
+          resolveDependencyFixTask.finalizedBy(tasks.named(JavaBasePlugin.BUILD_TASK_NAME).get());
         }).get();
 
     //TODO vorhandene Duplikate an Dependencies und falschen transitiven Abhängigkeitsversionen vermeiden
