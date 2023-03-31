@@ -67,15 +67,13 @@ public abstract class ResolveDependencyFix extends DefaultTask {
             dependencyFixResolver.getUnfixableDependencies());
       }
 
-      ResolvedConfiguration resolvedConfiguration = overrideDepencyVersiontoFixed(
+      ResolvedConfiguration resolvedConfiguration = overrideDepencyVersionToFixed(
           vulnerableFixableDependencies, new AtomicBoolean(false));
 
-      //TODO baue das projekt mit den geänderten Versionen oder erstelle neue sbom, je nach implementierung für prüfung
       //was wenn nicht baubar? Kann Plugin weiterlaufen? -> scheinbar nein
     } catch (IOException e) {
       getLogger().error(" {} {}", e.getCause(), e.getMessage());
-      throw new GradleException("An error occurred executing " + this.getClass().getName(),
-          e); //TODO failure handling
+      throw new GradleException("An error occurred executing " + this.getClass().getName(), e);
     }
   }
 
@@ -87,11 +85,12 @@ public abstract class ResolveDependencyFix extends DefaultTask {
    * @return
    */
   //TODO refactor
-  private ResolvedConfiguration overrideDepencyVersiontoFixed(
+  private ResolvedConfiguration overrideDepencyVersionToFixed(
       List<GavVulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
     //ändere die versionen der betroffenen dependencies auf die gefixten
     var configurationContainer = getProject().getConfigurations();
-    Configuration implementationConfiguration = configurationContainer.getByName(RUNTIME_CLASSPATH_CONFIGURATION_NAME);
+    Configuration implementationConfiguration = configurationContainer.getByName(
+        RUNTIME_CLASSPATH_CONFIGURATION_NAME);
     ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
     var dependencySet = resolvableDependencies.getDependencies();
     getLogger().info("implementationConfiguration dependencies: {}",
@@ -158,12 +157,12 @@ public abstract class ResolveDependencyFix extends DefaultTask {
                   GavVulnerableDependency match = gavVulnerableDependencies.detect(
                       vd -> vd.isSameFixGAV(identifier.getGroup(), identifier.getName(),
                           identifier.getVersion()));
-                  getLogger().quiet("match: {}, dependencyResult: {}", match,
+                  getLogger().debug("match: {}, dependencyResult: {}", match,
                       identifier);//TODO remove after debugging
                   //override version with other fix version
                   if (match != null) {
                     isRetryable.set(match.nextFixVersion());
-                    getLogger().quiet("!!!!!!!!!!!!!! {} {}", identifier,
+                    getLogger().info("try next fix version {} {}", identifier,
                         match.getFixVersion());//TODO remove after debugging
                   }
                 }));
@@ -174,8 +173,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
         //retry override version
         getLogger().error("Couldn't resolve all dependencies. Retry version override");
         isRetryable.set(false);
-        overrideDepencyVersiontoFixed(vulnerableFixableDependencies, isRetryable);
-        //TODO Doesn't work: > Cannot change resolution strategy of dependency configuration ':runtimeClasspath' after it has been resolved.
+        //Fixme Doesn't work: > Cannot change resolution strategy of dependency configuration ':runtimeClasspath' after it has been resolved.
+        overrideDepencyVersionToFixed(vulnerableFixableDependencies, isRetryable);
       }
 
       throw new ResolveException(": Vulnerable dependency version override",

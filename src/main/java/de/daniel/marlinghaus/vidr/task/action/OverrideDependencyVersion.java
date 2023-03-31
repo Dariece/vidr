@@ -24,6 +24,7 @@ public class OverrideDependencyVersion implements Action<Configuration> {
     if (configuration.isCanBeResolved()) {
       var actualForcedModules = configuration.getResolutionStrategy().getForcedModules();
       configuration.getResolutionStrategy()
+//          .failOnVersionConflict()
           .eachDependency(new AddOverrideDependencyVersionDetails(dependency));
       if (!actualForcedModules.isEmpty()) {
         actualForcedModules.add(dependency.copyFix());
