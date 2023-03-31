@@ -1,0 +1,155 @@
+@startuml
+top to bottom direction
+
+package "POJOS" {
+
+        class DependencyCheckResult {
+        - name : String
+        - type : IncompatibilityType
+        - incompatible : boolean
+        - conflictingDependencies : List<Dependency>
+        - actualVersion : String
+        - fixingVersions : List<String>
+
+        + DependencyCheckResult()
+        + getName() : String
+        + getType() : IncompatibilityType
+        + getIncompatible() : boolean
+        + getConflictingDependencies() : List<Dependency>
+        + getActualVersion() : String
+        + getFixingVersions() : List<String>
+    }
+
+    class Dependency {
+        - name : String
+        - version : String
+        - fixed : boolean
+        - sourceCode : FileInputStream
+        - byteCode : FileInputStream
+        - transitiveDependencies : List<Dependency>
+
+        + Dependency()
+        + getName() : String
+        + getVersion() : String
+        + getFixed() : boolean
+        + getSourceCode() : FileInputStream
+        + getByteCode() : FileInputStream
+        + getTransitiveDependencies() : List<Dependency>
+        + setfixed(boolean) : void
+    }
+}
+
+package "Fixer" {
+    interface IncompatibilityFixer {
+        - incompability : IncompatibilityType
+        - binaryIncompability : BinaryIncompatibilityType
+        - behaviourIncompability : BehaviourIncompatibilityType
+
+        + fix(DependencyCheckResult) : boolean
+        + rebuildProjectWithUpdatedDependencies() : boolean
+    }
+
+    class RenamePackageFixer {}
+    class ChangeDependencyOrderFixer {}
+    class HarmonizeVersionFixer {}
+    class ModifyClassloaderFixer {}
+    class RemoveDependencyFixer {}
+    class SetNewVersionFixer {}
+    class SetStableVersionFixer {}
+}
+
+package "Checker"{
+    interface IncompatibilityChecker {
+        - doCheck(Dependency) : exteboolean
+        + default check(Dependency) : DependencyCheckResult
+    }
+
+    class StaticBytecodeChecker {}
+    class GenerateTestsChecker {}
+    class DynamicBytecodeImprovementChecker {
+        notImplemented: notResearchedEnough
+    }
+}
+
+class IncompatibilityResolver{
+    - determiner : StrategyDeterminer;
+    - checker : IncompatibilityChecker;
+    - fixer : IncompatibilityFixer;
+
+    + IncompatibilityResolver()
+    + resolve(List<Dependency>, boolean): void
+}
+
+package "Determiner"{
+    abstract StrategyDeterminer{
+        - checkStrategies: List<IncompatibilityChecker>
+        - fixStrategies: List<IncompatibilityFixer>
+        - lastUsedFixer : IncompatibilityFixer
+        - lastUsedChecker : IncompatibilityChecker
+
+        - abstract getFixingStrategyFromDatabase(DependencyCheckResul) : IncompatibilityFixer
+        - abstract doDetermineFixer() : IncompatibilityFixer
+
+        + abstract determineChecker(Dependency) : IncompatibilityChecker
+        + determineFixer(DependencyCheckResult) : IncompatibilityFixer
+    }
+
+    class FullStrategyDeterminer{
+    }
+
+    class ShortStrategyDeterminer{
+    }
+}
+
+
+package "IncompatibilityTypes"{
+    enum IncompatibilityType {
+        BINARY_INCOMPATIBILITY,
+        SOURCECODE_INCOMPATIBILITY,
+        BEHAVIOUR_INCOMPATIBILITY
+    }
+
+    enum BinaryIncompatibilityType {
+        WRONG_DEPENDENCY_VERSION,
+        REDUNDANT_DEPENDENCY_CLASS,
+        REDUNDANT_APPLICATION_CLASS
+    }
+
+    enum BehaviourIncompatibilityType {
+        REFLECTION_ORIGIN,
+        SEMANTIC_ORIGIN
+    }
+}
+
+
+Dependency "1" --o "0..*" Dependency : contains
+
+IncompatibilityResolver "1" --> "1" StrategyDeterminer : uses
+IncompatibilityResolver "1" --> "0..1" IncompatibilityFixer : uses
+IncompatibilityResolver "1" --> "0..1" IncompatibilityChecker : uses
+IncompatibilityResolver "1" --> "0..1" Dependency : resolves
+
+FullStrategyDeterminer --|> StrategyDeterminer
+ShortStrategyDeterminer --|> StrategyDeterminer
+
+StrategyDeterminer "1" --> "0..1" IncompatibilityFixer : \n\ndetermines
+StrategyDeterminer "1" --> "0..1" IncompatibilityChecker : determines
+
+IncompatibilityFixer "1" --> "1"  DependencyCheckResult : fixes
+IncompatibilityFixer "1" --> "1"  IncompatibilityType : isUsedFor
+IncompatibilityFixer "1" --> "1"  BinaryIncompatibilityType : isUsedFor
+IncompatibilityFixer "1" --> "1"  BehaviourIncompatibilityType : isUsedFor
+IncompatibilityChecker "1" --> "1"  Dependency : checks
+
+IncompatibilityFixer <|.. RenamePackageFixer
+IncompatibilityFixer <|.. ChangeDependencyOrderFixer
+IncompatibilityFixer <|.. HarmonizeVersionFixer
+IncompatibilityFixer <|.. ModifyClassloaderFixer
+IncompatibilityFixer <|.. RemoveDependencyFixer
+IncompatibilityFixer <|.. SetNewVersionFixer
+IncompatibilityFixer <|.. SetStableVersionFixer
+
+IncompatibilityChecker <|.. StaticBytecodeChecker
+IncompatibilityChecker <|.. GenerateTestsChecker
+IncompatibilityChecker <|.. DynamicBytecodeImprovementChecker
+@enduml
