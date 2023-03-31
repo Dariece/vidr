@@ -1,22 +1,15 @@
 package de.daniel.marlinghaus.vidr;
 
-import de.daniel.marlinghaus.vidr.incompatibility.pojo.Dependency;
+import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Objects;
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
-import org.gradle.testkit.runner.BuildResult;
-import org.gradle.testkit.runner.GradleRunner;
-import org.gradle.testkit.runner.TaskOutcome;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_SBOM;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class VIDRPluginTest {
@@ -36,7 +29,7 @@ public class VIDRPluginTest {
   @Test
   void applyTest() {
     Project project = ProjectBuilder.builder().withName(projectName).build();
-    var dependency = Dependency.builder().name("Test").version("0.0.0")
+    var dependency = IncompatibilityDependency.builder().name("Test").version("0.0.0")
         .configuration(project.getConfigurations().create("Test")).version("0.0.1").build();
     project.getDependencies().add("Test", dependency);
     project.getPluginManager().apply("de.daniel.marlinghaus.vidr");

@@ -1,11 +1,13 @@
 package de.daniel.marlinghaus.vidr;
 
+import static de.daniel.marlinghaus.vidr.VidrTasks.CHECK_COMPATIBILITY;
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_SBOM;
 import static de.daniel.marlinghaus.vidr.VidrTasks.CREATE_VULNERABILITY_REPORT;
 import static de.daniel.marlinghaus.vidr.VidrTasks.RESOLVE_DEPENDENCY_FIX;
 import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.CRITICAL;
 import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.HIGH;
 
+import de.daniel.marlinghaus.vidr.task.CheckCompatibility;
 import de.daniel.marlinghaus.vidr.task.CreateVulnerabilityReport;
 import de.daniel.marlinghaus.vidr.task.ResolveDependencyFix;
 import de.daniel.marlinghaus.vidr.utils.string.StringUtils;
@@ -62,7 +64,7 @@ public class VidrPlugin implements Plugin<Project> {
           sbomTask.setOutputFormat("json");
           sbomTask.setIncludeBomSerialNumber(false);
           sbomTask.setComponentVersion("2.0.0");
-        }).get(); //TODO use output from previous cyclone Task in Project
+        }).get();
 
     // configure vuln report creation
     CreateVulnerabilityReport createVulnerabilityReportTask = tasks.register(
@@ -74,7 +76,8 @@ public class VidrPlugin implements Plugin<Project> {
               .applicationName(projectName)
               .format(ScanFormat.SBOM)
               .stage(StringUtils.notBlank(stage) ? stage : "local")
-              .pipelineRun("") // TODO get from environment variables or default empty
+              .pipelineRun(getPropertyValue(null, null,
+                  "PIPELINE_RUN_NAME")) //write context.pipelineRun.name to env using actual tekton task
               .severities(List.of(HIGH, CRITICAL)) //TODO make configurable
               .build();
           Path scanObjectFile = createSbomTask.getDestination().get().toPath()
@@ -101,17 +104,17 @@ public class VidrPlugin implements Plugin<Project> {
         }).get();
 
     //configure dependency fix resolve
-    ResolveDependencyFix resolveDependencyFix = tasks.register(RESOLVE_DEPENDENCY_FIX.getName(),
+    ResolveDependencyFix resolveDependencyFixTask = tasks.register(RESOLVE_DEPENDENCY_FIX.getName(),
         ResolveDependencyFix.class,
-        resolveDependencyFixTask -> {
+        resolveFixTask -> {
           //TODO configure
-          resolveDependencyFixTask.setReportFile(createVulnerabilityReportTask.getOutputFile());
+          resolveFixTask.setReportFile(createVulnerabilityReportTask.getOutputFile());
 
           // define execution order
-          resolveDependencyFixTask.dependsOn(createVulnerabilityReportTask);
-          resolveDependencyFixTask.mustRunAfter(createVulnerabilityReportTask);
+          resolveFixTask.dependsOn(createVulnerabilityReportTask);
+          resolveFixTask.mustRunAfter(createVulnerabilityReportTask);
           //build after to safe result
-          resolveDependencyFixTask.finalizedBy(tasks.named(JavaBasePlugin.BUILD_TASK_NAME).get());
+          resolveFixTask.finalizedBy(tasks.named(JavaBasePlugin.BUILD_TASK_NAME).get());
         }).get();
 
     //TODO vorhandene Duplikate an Dependencies und falschen transitiven Abhängigkeitsversionen vermeiden
@@ -129,9 +132,18 @@ public class VidrPlugin implements Plugin<Project> {
           sbomTask.setComponentVersion("2.0.0");
 
           // define execution order
-          sbomTask.dependsOn(resolveDependencyFix);
-          sbomTask.mustRunAfter(resolveDependencyFix);
+          sbomTask.dependsOn(resolveDependencyFixTask);
+          sbomTask.mustRunAfter(resolveDependencyFixTask);
         }).get();
+
+    CheckCompatibility checkCompatibilityTask = tasks.register(CHECK_COMPATIBILITY.getName(),
+        CheckCompatibility.class,
+        checkTask -> {
+          // define execution order
+          checkTask.dependsOn(resolveDependencyFixTask);
+          checkTask.mustRunAfter(resolveDependencyFixTask);
+        }).get();
+
   }
 
   private void registerBuildServices(Project project) {

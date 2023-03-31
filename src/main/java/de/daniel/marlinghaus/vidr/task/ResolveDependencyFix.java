@@ -85,6 +85,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
    * @return
    */
   //TODO refactor
+  //TODO make override reusable for fix incompatibility
   private ResolvedConfiguration overrideDepencyVersionToFixed(
       List<GavVulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
     //ändere die versionen der betroffenen dependencies auf die gefixten
