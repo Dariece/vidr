@@ -75,12 +75,12 @@ public class VIDRPluginTest {
 //        .getOutcome()).isEqualByComparingTo(TaskOutcome.SUCCESS);
 //  }
 
-  private void writeFile(File destination, String content) {
-    try (BufferedWriter output = new BufferedWriter(new FileWriter(destination))) {
-      output.write(content);
-    } catch (IOException e) {
-      throw new RuntimeException(String.format("Couldn't write testfile %s", destination.getName()),
-          e);
-    }
-  }
+//  private void writeFile(File destination, String content) {
+//    try (BufferedWriter output = new BufferedWriter(new FileWriter(destination))) {
+//      output.write(content);
+//    } catch (IOException e) {
+//      throw new RuntimeException(String.format("Couldn't write testfile %s", destination.getName()),
+//          e);
+//    }
+//  }
 }

@@ -136,10 +136,13 @@ public class VidrPlugin implements Plugin<Project> {
           sbomTask.mustRunAfter(resolveDependencyFixTask);
         }).get();
 
+    //check dependency compatibility
     CheckCompatibility checkCompatibilityTask = tasks.register(CHECK_COMPATIBILITY.getName(),
         CheckCompatibility.class,
         checkTask -> {
           // define execution order
+          checkTask.setResolvedConfiguration(resolveDependencyFixTask.getResolvedConfiguration());
+          checkTask.setDirectResolvableDependencies(resolveDependencyFixTask.getDirectResolvableDependencies());
           checkTask.dependsOn(resolveDependencyFixTask);
           checkTask.mustRunAfter(resolveDependencyFixTask);
         }).get();

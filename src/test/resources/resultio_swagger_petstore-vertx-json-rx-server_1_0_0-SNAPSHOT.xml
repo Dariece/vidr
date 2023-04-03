@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+工具简介
+Decca目标在于检测软件项目中的依赖冲突问题，根据依赖冲突对软件带来的影响和修复的成本对其评估警告的严重等级：
+
+MODE 1:
+
+Level 1. 虽然项目中存在多个版本的依赖冲突问题，但是当前依赖树中存在的多个版本的library都完全覆盖了自身项目期望调用的方法和属性的集合。
+         所以冲突的library在classpath上不同的声明顺序，都不会引起运行时刻的异常行为发生。
+
+Level 2. 存在依赖冲突问题，但是目前可以加载到的那个library的版本完全覆盖了自身的项目期望调用的方法和属性的集合，
+         然而在依赖树中但是未被加载到的其他版本的library并没有完全覆盖到自身项目所期望调用的方法和属性的集合。
+         虽然当前状态不会引发运行时刻的异常行为，但是它具有一定的风险性。
+
+Level 3. 加载到的library的版本没有完全覆盖自己的项目想要调用的方法和属性的集合，所以运行时刻的异常行为一定会发生。
+         但是依赖树中未被加载到的其他版本的library可以满足调用的需求，只需要调整他们的声明顺序，便可以以较低的修复代价解决问题。
+
+Level 4. 加载到的library的版本没有完全覆盖自己的项目想要调用的方法和属性的集合，所以运行时刻的异常行为一定会发生。
+         并且依赖树中未被加载到其他版本的library同样无法满足调用的需求，需要以一定的方式让这些冲突的版本共存于同一个项目当中。修复代价较高。
+
+
+MODE 2:
+
+Level 1. 当前依赖树中存在的多个版本的library都完全覆盖了自身项目期望调用的方法和属性的集合,不会引发运行时刻的异常行为。
+
+Level 2. 加载到的library的版本没有完全覆盖自己的项目想要调用的方法和属性的集合，所以运行时刻的异常行为一定会发生。
+
+
+
+MODE 3:
+
+Level 1. 自身的项目没有直接或调用了由于依赖冲突而未被加载到的方法或属性，同时项目依赖的其他library也没有调用到那些未被加载到的方法或属性。
+         运行时刻的异常行为不会发生。
+
+Level 2. 自身的项目没有直接或调用了由于依赖冲突而未被加载到的方法或属性，但是项目与冲突的library之间间隔的其他library却调用了到那些未被加载到的方法或属性。
+         运行时刻的异常行为不会发生，但是在版本演化过程中，有引发异常行为的风险。
+
+Level 3. 自身的项目直接或调用了由于依赖冲突而未被加载到的方法或属性，运行时刻的异常行为一定会发生。
+-->
+<project project="io.swagger:petstore-vertx-json-rx-server" projectInfo="io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT@/appl/dev/StaticBytecodeChecker/testProject/petstore-vertx-json-rx-server/pom.xml">
+  <conflicts>
+    <conflictJar groupId-artifactId="com.fasterxml.jackson.core:jackson-core" versions="[2.7.4, /2.9.3, /2.8.4]" riskLevel="3">
+      <versions>
+        <version versionId="2.7.4" loaded="true">
+          <path>com.fasterxml.jackson.core:jackson-core:2.7.4:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.7.4::compile + com.fasterxml.jackson.core:jackson-core:2.7.4::compile] [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.7.4::compile + com.fasterxml.jackson.core:jackson-databind:2.7.4::compile + com.fasterxml.jackson.core:jackson-core:2.7.4::compile]</path>
+        </version>
+        <version versionId="2.9.3" loaded="false">
+          <path>com.fasterxml.jackson.core:jackson-core:2.9.3:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.github.phiz71:vertx-swagger-router:1.6.0::compile + io.vertx:vertx-core:3.5.1::compile + com.fasterxml.jackson.core:jackson-core:2.9.3::compile]</path>
+        </version>
+        <version versionId="2.8.4" loaded="false">
+          <path>com.fasterxml.jackson.core:jackson-core:2.8.4:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.github.phiz71:vertx-swagger-router:1.6.0::compile + io.swagger:swagger-parser:1.0.26::compile + io.swagger:swagger-core:1.5.12::compile + com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.8.4::compile + com.fasterxml.jackson.core:jackson-core:2.8.4::compile]</path>
+        </version>
+      </versions>
+      <RiskMethods tip="methods would be referenced but not be loaded !">
+        <RiskMethod>com.fasterxml.jackson.core.JsonStreamContext: java.lang.String typeDesc()</RiskMethod>
+        <RiskMethod>com.fasterxml.jackson.core.base.ParserMinimalBase: void _reportInvalidEOF(java.lang.String,com.fasterxml.jackson.core.JsonToken)</RiskMethod>
+      </RiskMethods>
+      <SafeJar></SafeJar>
+    </conflictJar>
+  </conflicts>
+  <conflicts>
+    <conflictJar groupId-artifactId="com.fasterxml.jackson.core:jackson-databind" versions="[2.7.4, /2.8.4, /2.9.3]" riskLevel="1">
+      <versions>
+        <version versionId="2.8.4" loaded="false">
+          <path>com.fasterxml.jackson.core:jackson-databind:2.8.4:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.github.phiz71:vertx-swagger-router:1.6.0::compile + io.swagger:swagger-parser:1.0.26::compile + io.swagger:swagger-core:1.5.12::compile + com.fasterxml.jackson.core:jackson-databind:2.8.4::compile]</path>
+        </version>
+        <version versionId="2.9.3" loaded="false">
+          <path>com.fasterxml.jackson.core:jackson-databind:2.9.3:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.github.phiz71:vertx-swagger-router:1.6.0::compile + io.vertx:vertx-core:3.5.1::compile + com.fasterxml.jackson.core:jackson-databind:2.9.3::compile]</path>
+        </version>
+        <version versionId="2.7.4" loaded="true">
+          <path>com.fasterxml.jackson.core:jackson-databind:2.7.4:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.7.4::compile + com.fasterxml.jackson.core:jackson-databind:2.7.4::compile]</path>
+        </version>
+      </versions>
+      <RiskMethods tip="jar was be referenced and be loaded !"/>
+      <SafeJar>com.fasterxml.jackson.core:jackson-databind:2.7.4:</SafeJar>
+    </conflictJar>
+  </conflicts>
+  <conflicts>
+    <conflictJar groupId-artifactId="com.fasterxml.jackson.core:jackson-annotations" versions="[2.7.0, /2.8.4]" riskLevel="1">
+      <versions>
+        <version versionId="2.8.4" loaded="false">
+          <path>com.fasterxml.jackson.core:jackson-annotations:2.8.4:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.github.phiz71:vertx-swagger-router:1.6.0::compile + io.swagger:swagger-parser:1.0.26::compile + io.swagger:swagger-core:1.5.12::compile + io.swagger:swagger-models:1.5.12::compile + com.fasterxml.jackson.core:jackson-annotations:2.8.4::compile] [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.github.phiz71:vertx-swagger-router:1.6.0::compile + io.swagger:swagger-parser:1.0.26::compile + io.swagger:swagger-core:1.5.12::compile + com.fasterxml.jackson.core:jackson-annotations:2.8.4::compile]</path>
+        </version>
+        <version versionId="2.7.0" loaded="true">
+          <path>com.fasterxml.jackson.core:jackson-annotations:2.7.0:: [io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT:: + com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.7.4::compile + com.fasterxml.jackson.core:jackson-databind:2.7.4::compile + com.fasterxml.jackson.core:jackson-annotations:2.7.0::compile]</path>
+        </version>
+      </versions>
+      <RiskMethods tip="jar was be referenced and be loaded !"/>
+      <SafeJar>com.fasterxml.jackson.core:jackson-annotations:2.7.0:</SafeJar>
+    </conflictJar>
+  </conflicts>
+</project>

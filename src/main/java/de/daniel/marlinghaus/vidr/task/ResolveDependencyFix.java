@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import lombok.Getter;
 import lombok.Setter;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -30,18 +31,31 @@ import org.gradle.api.artifacts.result.ResolutionResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
 import org.gradle.api.tasks.TaskAction;
 
+/**
+ * Tries to resolve the fix-versions of vulnerable dependencies from scanner report to the project
+ * configuration
+ */
 public abstract class ResolveDependencyFix extends DefaultTask {
 
   //TODO resolve services dynamically by strategy
   private final VulnerabilityReportDeserializer<TrivyVulnerability> reportDeserializer = new TrivyReportDeserializer();
   private final VulnerableDependencyFixVersionResolver<TrivyReportDeserializer> dependencyFixResolver = new VulnerableDependencyFixVersionResolver(
       reportDeserializer);
+  /**
+   * path to the vulnerability report file
+   */
   @Setter
   private Path reportFile;
-
+  @Getter
+  private ResolvedConfiguration resolvedConfiguration;
+  @Getter
   private List<GavVulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
   private List<GavVulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
 
+  /**
+   * Tries to resolve the fix-versions of vulnerable dependencies from scanner report to the project
+   * configuration
+   */
   @TaskAction
   void run() {
     try {
@@ -67,7 +81,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
             dependencyFixResolver.getUnfixableDependencies());
       }
 
-      ResolvedConfiguration resolvedConfiguration = overrideDepencyVersionToFixed(
+      resolvedConfiguration = overrideDepencyVersionToFixed(
           vulnerableFixableDependencies, new AtomicBoolean(false));
 
       //was wenn nicht baubar? Kann Plugin weiterlaufen? -> scheinbar nein
@@ -80,9 +94,10 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   /**
    * Recursively try to override dependency versions to fixed
    *
-   * @param vulnerableFixableDependencies
-   * @param isRetryable
-   * @return
+   * @param vulnerableFixableDependencies list of vulnerable dependencies with a fix version
+   * @param isRetryable                   is the process retryable with another fix version of any
+   *                                      dependency that failed to be resolved
+   * @return resolved configuration with fixed dependencies
    */
   //TODO refactor
   //TODO make override reusable for fix incompatibility
