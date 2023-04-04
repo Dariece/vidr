@@ -1,42 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-工具简介
-Decca目标在于检测软件项目中的依赖冲突问题，根据依赖冲突对软件带来的影响和修复的成本对其评估警告的严重等级：
+Beschreibung des Tools
+Das Ziel von Decca ist es, Abhängigkeitskonflikte in Softwareprojekten zu erkennen und die Schwere der Warnungen auf der Grundlage ihrer Auswirkungen auf die Software und der Kosten für ihre Behebung zu bewerten:
 
-MODE 1:
+MODUS 1.
+Stufe 1: Obwohl es mehrere Versionen eines Projekts mit widersprüchlichen Abhängigkeiten gibt, enthält der aktuelle Abhängigkeitsbaum mehrere Versionen einer Bibliothek, die den Satz von Methoden und Eigenschaften, deren Aufruf das Projekt erwartet, vollständig außer Kraft setzen.
+         Die unterschiedlichen Deklarationen der kollidierenden Bibliotheken auf dem Klassenpfad führen also nicht zu Laufzeitausnahmen.
 
-Level 1. 虽然项目中存在多个版本的依赖冲突问题，但是当前依赖树中存在的多个版本的library都完全覆盖了自身项目期望调用的方法和属性的集合。
-         所以冲突的library在classpath上不同的声明顺序，都不会引起运行时刻的异常行为发生。
+Stufe 2: Es besteht ein Abhängigkeitskonflikt, aber die Version der Bibliothek, die derzeit zum Laden verfügbar ist, überschreibt den Satz von Methoden und Eigenschaften, deren Aufruf das Projekt erwartet, vollständig.
+         Andere Versionen der Bibliothek im Abhängigkeitsbaum, die nicht geladen wurden, decken jedoch die Menge der Methoden und Eigenschaften, deren Aufruf das Projekt erwartet, nicht vollständig ab.
+         Obwohl der aktuelle Zustand keine Laufzeitausnahme auslöst, ist er riskant.
 
-Level 2. 存在依赖冲突问题，但是目前可以加载到的那个library的版本完全覆盖了自身的项目期望调用的方法和属性的集合，
-         然而在依赖树中但是未被加载到的其他版本的library并没有完全覆盖到自身项目所期望调用的方法和属性的集合。
-         虽然当前状态不会引发运行时刻的异常行为，但是它具有一定的风险性。
+Stufe 3: Die geladene Version der Bibliothek deckt die Menge der Methoden und Eigenschaften, die Ihr Projekt aufzurufen erwartet, nicht vollständig ab, so dass Laufzeitausnahmen zwangsläufig auftreten werden.
+         Andere Versionen der Bibliothek, die nicht in den Abhängigkeitsbaum geladen werden, können jedoch die Aufrufanforderung erfüllen und können mit geringem Aufwand durch einfaches Umordnen ihrer Deklarationen behoben werden.
 
-Level 3. 加载到的library的版本没有完全覆盖自己的项目想要调用的方法和属性的集合，所以运行时刻的异常行为一定会发生。
-         但是依赖树中未被加载到的其他版本的library可以满足调用的需求，只需要调整他们的声明顺序，便可以以较低的修复代价解决问题。
-
-Level 4. 加载到的library的版本没有完全覆盖自己的项目想要调用的方法和属性的集合，所以运行时刻的异常行为一定会发生。
-         并且依赖树中未被加载到其他版本的library同样无法满足调用的需求，需要以一定的方式让这些冲突的版本共存于同一个项目当中。修复代价较高。
-
-
-MODE 2:
-
-Level 1. 当前依赖树中存在的多个版本的library都完全覆盖了自身项目期望调用的方法和属性的集合,不会引发运行时刻的异常行为。
-
-Level 2. 加载到的library的版本没有完全覆盖自己的项目想要调用的方法和属性的集合，所以运行时刻的异常行为一定会发生。
+Stufe 4: Die geladene Version der Bibliothek deckt die Methoden und Eigenschaften, die Ihr Projekt aufrufen möchte, nicht vollständig ab, so dass es zwangsläufig zu Laufzeitausnahmen kommen wird.
+         Die widersprüchlichen Versionen müssen auf irgendeine Weise im selben Projekt koexistieren. Dies ist eine kostspielige Lösung.
 
 
+MODUS 2.
+Stufe 1: Mehrere Versionen der aktuellen Bibliothek in der Abhängigkeitsstruktur überschreiben die Methoden und Eigenschaften, die vom Projekt selbst aufgerufen werden sollen, vollständig, ohne eine Laufzeitausnahme zu verursachen.
 
-MODE 3:
+Stufe 2: Die in den Baum geladene Version der Bibliothek deckt die Menge der Methoden und Eigenschaften, deren Aufruf das Projekt erwartet, nicht vollständig ab, so dass die Laufzeitausnahme definitiv auftritt.
 
-Level 1. 自身的项目没有直接或调用了由于依赖冲突而未被加载到的方法或属性，同时项目依赖的其他library也没有调用到那些未被加载到的方法或属性。
-         运行时刻的异常行为不会发生。
 
-Level 2. 自身的项目没有直接或调用了由于依赖冲突而未被加载到的方法或属性，但是项目与冲突的library之间间隔的其他library却调用了到那些未被加载到的方法或属性。
-         运行时刻的异常行为不会发生，但是在版本演化过程中，有引发异常行为的风险。
+MODUS 3.
+Stufe 1: Das Projekt selbst ruft keine Methoden oder Eigenschaften direkt auf, die aufgrund eines Abhängigkeitskonflikts nicht geladen sind, und andere Bibliotheken, von denen das Projekt abhängt, rufen keine Methoden oder Eigenschaften auf, die nicht geladen sind.
+         Es treten keine Laufzeitausnahmen auf.
 
-Level 3. 自身的项目直接或调用了由于依赖冲突而未被加载到的方法或属性，运行时刻的异常行为一定会发生。
+Stufe 2: Das Projekt selbst ruft nicht direkt eine Methode oder Eigenschaft auf, die aufgrund eines Abhängigkeitskonflikts nicht geladen ist, aber andere Bibliotheken zwischen dem Projekt und der konfliktbehafteten Bibliothek rufen die Methode oder Eigenschaft auf, die nicht geladen ist.
+         Ein außergewöhnliches Verhalten zur Laufzeit tritt nicht auf, aber es besteht die Gefahr, dass ein außergewöhnliches Verhalten während der Versionsentwicklung ausgelöst wird.
+
+Stufe 3: Eine Laufzeitausnahme tritt auf, wenn das Projekt selbst direkt eine Methode oder Eigenschaft aufruft, die aufgrund eines Abhängigkeitskonflikts nicht geladen ist.
 -->
 <project project="io.swagger:petstore-vertx-json-rx-server" projectInfo="io.swagger:petstore-vertx-json-rx-server:1.0.0-SNAPSHOT@/appl/dev/StaticBytecodeChecker/testProject/petstore-vertx-json-rx-server/pom.xml">
   <conflicts>

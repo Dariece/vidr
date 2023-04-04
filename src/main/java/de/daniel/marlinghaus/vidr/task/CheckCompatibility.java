@@ -1,6 +1,6 @@
 package de.daniel.marlinghaus.vidr.task;
 
-import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.GavVulnerableDependency;
+import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.VulnerableDependency;
 import java.util.List;
 import lombok.Setter;
 import org.eclipse.collections.api.factory.Lists;
@@ -13,7 +13,7 @@ public abstract class CheckCompatibility extends DefaultTask {
   @Setter
   private ResolvedConfiguration resolvedConfiguration;
   @Setter
-  private List<GavVulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
+  private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
 
   @TaskAction
   void run() {

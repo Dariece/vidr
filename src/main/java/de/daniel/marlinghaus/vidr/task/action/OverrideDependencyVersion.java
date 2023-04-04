@@ -1,6 +1,6 @@
 package de.daniel.marlinghaus.vidr.task.action;
 
-import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.GavVulnerableDependency;
+import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.VulnerableDependency;
 import lombok.RequiredArgsConstructor;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.Configuration;
@@ -14,7 +14,7 @@ import org.gradle.api.artifacts.Configuration;
 @RequiredArgsConstructor
 public class OverrideDependencyVersion implements Action<Configuration> {
 
-  private final GavVulnerableDependency dependency;
+  private final VulnerableDependency dependency;
 
   /**
    * @param configuration The object to perform the action on.

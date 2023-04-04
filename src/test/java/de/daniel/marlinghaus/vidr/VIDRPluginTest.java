@@ -1,16 +1,13 @@
 package de.daniel.marlinghaus.vidr;
 
-import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
-import java.io.BufferedWriter;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import org.gradle.api.Project;
+import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class VIDRPluginTest {
 
@@ -29,12 +26,14 @@ public class VIDRPluginTest {
   @Test
   void applyTest() {
     Project project = ProjectBuilder.builder().withName(projectName).build();
-    var dependency = IncompatibilityDependency.builder().name("Test").version("0.0.0")
-        .configuration(project.getConfigurations().create("Test")).version("0.0.1").build();
+
+    var dependency = new DefaultExternalModuleDependency("TestGroup", "Test", "0.0.0",
+        project.getConfigurations().create("Test").getName());
     project.getDependencies().add("Test", dependency);
+    project.getTasks().register("build");
     project.getPluginManager().apply("de.daniel.marlinghaus.vidr");
 
-    System.out.println(dependency.getConfiguration());
+    System.out.println(dependency.getTargetConfiguration());
     project.getTasks().forEach(t -> System.out.println("Task name: " + t.getName()));
     assertThat(project.getPluginManager().hasPlugin("de.daniel.marlinghaus.vidr")).isTrue();
   }

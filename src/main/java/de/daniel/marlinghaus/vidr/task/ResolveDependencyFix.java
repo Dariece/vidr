@@ -9,7 +9,7 @@ import de.daniel.marlinghaus.vidr.vulnerability.report.VulnerabilityReportDeseri
 import de.daniel.marlinghaus.vidr.vulnerability.report.vo.VulnerabilityReport;
 import de.daniel.marlinghaus.vidr.vulnerability.report.vo.trivy.TrivyVulnerability;
 import de.daniel.marlinghaus.vidr.vulnerability.resolve.VulnerableDependencyFixVersionResolver;
-import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.GavVulnerableDependency;
+import de.daniel.marlinghaus.vidr.vulnerability.resolve.vo.VulnerableDependency;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -49,8 +49,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   @Getter
   private ResolvedConfiguration resolvedConfiguration;
   @Getter
-  private List<GavVulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
-  private List<GavVulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
+  private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
+  private List<VulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
 
   /**
    * Tries to resolve the fix-versions of vulnerable dependencies from scanner report to the project
@@ -67,7 +67,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       getLogger().quiet("Successful deserialized report");
 
       getLogger().info("Start resolve fix versions for vulnerable dependencies");
-      List<GavVulnerableDependency> vulnerableFixableDependencies = dependencyFixResolver.resolveFixVersions(
+      List<VulnerableDependency> vulnerableFixableDependencies = dependencyFixResolver.resolveFixVersions(
           deserializedReport.getVulnerabilities());
       getLogger().debug("Fixable dependencies: {}", vulnerableFixableDependencies);
       getLogger().quiet("Successful resolved fix versions for vulnerable dependencies");
@@ -102,7 +102,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   //TODO refactor
   //TODO make override reusable for fix incompatibility
   private ResolvedConfiguration overrideDepencyVersionToFixed(
-      List<GavVulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
+      List<VulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
     //ändere die versionen der betroffenen dependencies auf die gefixten
     var configurationContainer = getProject().getConfigurations();
     Configuration implementationConfiguration = configurationContainer.getByName(
@@ -149,7 +149,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
     List<UnresolvedDependencyResult> unresolvedDependencyResults = (List<UnresolvedDependencyResult>) resolutionResult.getAllDependencies()
         .stream()
         .filter(r -> r instanceof UnresolvedDependencyResult).toList();
-    ImmutableList<GavVulnerableDependency> gavVulnerableDependencies = immutable.ofAll(
+    ImmutableList<VulnerableDependency> gavVulnerableDependencies = immutable.ofAll(
         vulnerableFixableDependencies);
     if (unresolvedDependencyResults.isEmpty()) {
       //resolves and downloads configuration (dependency changes)
@@ -170,7 +170,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
                 .filter(d -> d.getRequested().getDisplayName().equals(displayName))
                 .forEach(d -> {
                   var identifier = c.getModuleVersion();
-                  GavVulnerableDependency match = gavVulnerableDependencies.detect(
+                  VulnerableDependency match = gavVulnerableDependencies.detect(
                       vd -> vd.isSameFixGAV(identifier.getGroup(), identifier.getName(),
                           identifier.getVersion()));
                   getLogger().debug("match: {}, dependencyResult: {}", match,
