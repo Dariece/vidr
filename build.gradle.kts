@@ -47,6 +47,12 @@ dependencies {
 //    implementation("com.fasterxml.jackson.core:jackson-core:2.14.1")
 //    implementation(gradleApi())
 
+    //static bytecode analysis
+    implementation("org.soot-oss:sootup.core:1.0.0")
+    implementation("org.soot-oss:sootup.java.core:1.0.0")
+    implementation("org.soot-oss:sootup.java.bytecode:1.0.0")
+    implementation("org.soot-oss:sootup.callgraph:1.0.0")
+
     //Test the plugin functionalities
     testImplementation(gradleTestKit())
     testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")

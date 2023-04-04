@@ -18,6 +18,7 @@ import de.daniel.marlinghaus.vidr.vulnerability.scanner.vo.ScanJob;
 import java.nio.file.Path;
 import java.util.List;
 import org.cyclonedx.gradle.CycloneDxTask;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaBasePlugin;
@@ -140,9 +141,18 @@ public class VidrPlugin implements Plugin<Project> {
     CheckCompatibility checkCompatibilityTask = tasks.register(CHECK_COMPATIBILITY.getName(),
         CheckCompatibility.class,
         checkTask -> {
-          // define execution order
+          //soot properties
+          String javaSourceCompatibility = getPropertyValue(null, null, "java.sourceCompatibility");
+          checkTask.setJavaSourceCompatibility(
+              StringUtils.notBlank(javaSourceCompatibility) ? javaSourceCompatibility
+                  : JavaVersion.VERSION_17.toString());
+
+          checkTask.setResolvableDependencies(resolveDependencyFixTask.getResolvableDependencies());
           checkTask.setResolvedConfiguration(resolveDependencyFixTask.getResolvedConfiguration());
-          checkTask.setDirectResolvableDependencies(resolveDependencyFixTask.getDirectResolvableDependencies());
+          checkTask.setDirectResolvableDependencies(
+              resolveDependencyFixTask.getDirectResolvableDependencies());
+
+          // define execution order
           checkTask.dependsOn(resolveDependencyFixTask);
           checkTask.mustRunAfter(resolveDependencyFixTask);
         }).get();

@@ -49,6 +49,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   @Getter
   private ResolvedConfiguration resolvedConfiguration;
   @Getter
+  private ResolvableDependencies resolvableDependencies;
+  @Getter
   private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
   private List<VulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
 
@@ -107,7 +109,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
     var configurationContainer = getProject().getConfigurations();
     Configuration implementationConfiguration = configurationContainer.getByName(
         RUNTIME_CLASSPATH_CONFIGURATION_NAME);
-    ResolvableDependencies resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
+    resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
     var dependencySet = resolvableDependencies.getDependencies();
     getLogger().info("implementationConfiguration dependencies: {}",
         dependencySet.stream().toList());
