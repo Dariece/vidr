@@ -148,13 +148,13 @@ public class VidrPlugin implements Plugin<Project> {
                   : JavaVersion.VERSION_17.toString());
 
           checkTask.setResolvableDependencies(resolveDependencyFixTask.getResolvableDependencies());
-          checkTask.setResolvedConfiguration(resolveDependencyFixTask.getResolvedConfiguration());
-          checkTask.setDirectResolvableDependencies(
-              resolveDependencyFixTask.getDirectResolvableDependencies());
+          checkTask.getResolvedConfiguration().set(resolveDependencyFixTask.getResolvedConfiguration());
+//          checkTask.setDirectResolvableDependencies(
+//              resolveDependencyFixTask.getDirectResolvableDependencies());
 
           // define execution order
-          checkTask.dependsOn(resolveDependencyFixTask);
           checkTask.mustRunAfter(resolveDependencyFixTask);
+          checkTask.dependsOn(resolveDependencyFixTask);
         }).get();
 
   }

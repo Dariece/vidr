@@ -29,6 +29,9 @@ import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.result.ResolutionResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
+import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 /**
@@ -46,11 +49,26 @@ public abstract class ResolveDependencyFix extends DefaultTask {
    */
   @Setter
   private Path reportFile;
+
+  //TODO move providers to one shared service/object for following tasks
+  @Internal
+  protected abstract Property<ResolvedConfiguration> getInternalResolvedConfiguration();
+
+  /**
+   * <a href="https://docs.gradle.org/current/userguide/lazy_configuration.html">Lazy
+   * configuration</a> to share object with following task
+   */
   @Getter
-  private ResolvedConfiguration resolvedConfiguration;
+  @Internal
+  private Provider<ResolvedConfiguration> resolvedConfiguration = getInternalResolvedConfiguration()
+      .map(t -> t);
+
+
   @Getter
+  @Internal
   private ResolvableDependencies resolvableDependencies;
   @Getter
+  @Internal
   private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
   private List<VulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
 
@@ -83,8 +101,9 @@ public abstract class ResolveDependencyFix extends DefaultTask {
             dependencyFixResolver.getUnfixableDependencies());
       }
 
-      resolvedConfiguration = overrideDepencyVersionToFixed(
-          vulnerableFixableDependencies, new AtomicBoolean(false));
+      getInternalResolvedConfiguration().set(overrideDepencyVersionToFixed(
+          vulnerableFixableDependencies, new AtomicBoolean(false)));
+//      getResolvedConfiguration = resolvedConfiguration().map(t -> t);
 
       //was wenn nicht baubar? Kann Plugin weiterlaufen? -> scheinbar nein
     } catch (IOException e) {

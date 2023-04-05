@@ -5,13 +5,13 @@ import java.util.List;
 import lombok.Setter;
 import org.eclipse.collections.api.factory.Lists;
 
-public class CheckCompatibility extends IncompatibilityTask {
+public abstract class CheckCompatibility extends IncompatibilityTask {
 
-  @Setter
-  private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
+//  @Setter
+//  private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
 
   /**
-   *
+   * Incompatibility check after vulnerability fix
    */
   @Override
   void execute() {
