@@ -36,6 +36,7 @@ public class SootUtil {
     AnalysisInputLocation<JavaSootClass> inputLocation = new PathBasedAnalysisInputLocation(
         binaryPath, isRootProject ? SourceType.Application : SourceType.Library);
 
+    //TODO add input location for any other dependency version on classpath before resolve
     JavaProject project = JavaProject.builder(language).addInputLocation(inputLocation).build();
 //    log.quiet("{}:  {}", binaryPath.getFileName(), project.getSourceTypeSpecifier());
     return project;
@@ -62,7 +63,7 @@ public class SootUtil {
     return dependencyJarClasses.toImmutable();
   }
 
-  private static ImmutableList<JavaSootClass> tryGetClassesForJavaVersion(Path path,
+  public static ImmutableList<JavaSootClass> tryGetClassesForJavaVersion(Path path,
       int javaVersion) {
     try {
       log.debug("JavaVersion: {}", javaVersion);
@@ -71,6 +72,22 @@ public class SootUtil {
     } catch (IllegalArgumentException e) {
       if (javaVersion >= 8) {
         return tryGetClassesForJavaVersion(path, --javaVersion);
+      }
+      throw new GradleException(
+          String.format("%s: Could not resolve javaVersion for dependency jar %s",
+              SootUtil.class.getName(), path), e);
+    }
+  }
+  public static JavaProject tryGetProjectForJavaVersion(Path path,
+      int javaVersion) {
+    try {
+      log.debug("JavaVersion: {}", javaVersion);
+      JavaProject dependencyJar = configureProject(javaVersion, path, false);
+      getAllProjectClasses(dependencyJar);
+      return dependencyJar;
+    } catch (IllegalArgumentException e) {
+      if (javaVersion >= 8) {
+        return tryGetProjectForJavaVersion(path, --javaVersion);
       }
       throw new GradleException(
           String.format("%s: Could not resolve javaVersion for dependency jar %s",
