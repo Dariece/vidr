@@ -32,7 +32,7 @@ public abstract class IncompatibilityTask extends DefaultTask {
   @Setter
   protected String javaSourceCompatibility;
   protected IncompatibilityDependency rootProject;
-  protected MutableMap<String, IncompatibilityDependency> resolvableIncompatibleDependencies = Maps.mutable.empty();
+  private MutableMap<String, IncompatibilityDependency> resolvableIncompatibleDependencies = Maps.mutable.empty();
 //  protected ImmutableMap<String, ImmutableList<JavaSootClass>> resolvedDependencyClasses;
 
   /**
@@ -46,6 +46,7 @@ public abstract class IncompatibilityTask extends DefaultTask {
         .name(project.getName())
         .group(project.getGroup().toString())
         .version(project.getVersion().toString())
+        .rootProject(true)
         .byteCode(SootUtil.configureProject(
             projectJavaVersion,
             getProject().getBuildDir().toPath(), true)).build();
@@ -94,6 +95,7 @@ public abstract class IncompatibilityTask extends DefaultTask {
             .version(identifier.getVersion())
             .byteCode(SootUtil.tryGetProjectForJavaVersion(resolvedArtifact.getFile().toPath(),
                 projectJavaVersion))
+            .transitiveProjectDependency(!parent.isRootProject())
             .build();
 
         //add direct dependency to parent

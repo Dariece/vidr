@@ -17,6 +17,7 @@ import sootup.java.core.JavaProject;
 @SuperBuilder
 @Data
 public class IncompatibilityDependency extends GavDependency {
+
   //container
   private Configuration configuration;
 
@@ -25,8 +26,13 @@ public class IncompatibilityDependency extends GavDependency {
   @Builder.Default
   private boolean fixed = false;
   private FileInputStream sourceCode;
-//  private FileInputStream byteCode;
+  //  private FileInputStream byteCode;
   private JavaProject byteCode;
   @Builder.Default
   private MutableList<IncompatibilityDependency> transitiveDependencies = Lists.mutable.empty();
+
+  @Builder.Default
+  private boolean rootProject = false;
+  @Builder.Default
+  private boolean transitiveProjectDependency = false;
 }

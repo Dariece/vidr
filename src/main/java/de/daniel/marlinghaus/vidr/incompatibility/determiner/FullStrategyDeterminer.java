@@ -18,6 +18,14 @@ public class FullStrategyDeterminer extends IncompatibilityStrategyDeterminer {
   }
 
   /**
+   * @return
+   */
+  @Override
+  public IncompatibilityChecker determineChecker() {
+    return null;
+  }
+
+  /**
    * @param checkResult
    * @return
    */

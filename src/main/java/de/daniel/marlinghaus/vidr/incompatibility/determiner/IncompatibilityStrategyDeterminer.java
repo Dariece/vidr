@@ -14,6 +14,7 @@ public abstract class IncompatibilityStrategyDeterminer {
   IncompatibilityFixer lastUsedFixer;
   IncompatibilityChecker lastUsedChecker;
   public abstract IncompatibilityChecker determineChecker(IncompatibilityDependency dependency);
+  public abstract IncompatibilityChecker determineChecker();
   protected abstract IncompatibilityFixer getFixingStrategyFromDatabase(IncompatibilityDependencyCheckResult checkResult);
   protected abstract IncompatibilityFixer doDetermineFixer(GeneralIncompatibilityType type);
   public IncompatibilityFixer determineFixer(IncompatibilityDependencyCheckResult checkResult) throws NotDetermineableException {

@@ -2,6 +2,7 @@ package de.daniel.marlinghaus.vidr.utils.soot;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
@@ -12,11 +13,16 @@ import org.eclipse.collections.api.set.ImmutableSet;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import sootup.callgraph.AbstractCallGraphAlgorithm;
+import sootup.callgraph.CallGraph;
+import sootup.callgraph.RapidTypeAnalysisAlgorithm;
 import sootup.core.inputlocation.AnalysisInputLocation;
+import sootup.core.model.Method;
 import sootup.core.model.SourceType;
 import sootup.java.bytecode.inputlocation.PathBasedAnalysisInputLocation;
 import sootup.java.core.JavaProject;
 import sootup.java.core.JavaSootClass;
+import sootup.java.core.JavaSootMethod;
 import sootup.java.core.language.JavaLanguage;
 
 public class SootUtil {
@@ -78,6 +84,7 @@ public class SootUtil {
               SootUtil.class.getName(), path), e);
     }
   }
+
   public static JavaProject tryGetProjectForJavaVersion(Path path,
       int javaVersion) {
     try {
@@ -93,5 +100,15 @@ public class SootUtil {
           String.format("%s: Could not resolve javaVersion for dependency jar %s",
               SootUtil.class.getName(), path), e);
     }
+  }
+
+  public static Map<JavaSootMethod,List<CallGraph>> retrieveEveryCallgraphForClass(JavaSootClass clazz) {
+    Map<JavaSootMethod,List<CallGraph>> callGraphs = Maps.mutable.empty();
+    if (!clazz.isJavaLibraryClass()) { //Calculate callgraph for JVM Classes like System is expensive
+      clazz.getMethods().forEach(m -> {
+//       callGraphs.put(m,new RapidTypeAnalysisAlgorithm(clazz, clazz.getType()))
+      });
+    }
+    return callGraphs;
   }
 }

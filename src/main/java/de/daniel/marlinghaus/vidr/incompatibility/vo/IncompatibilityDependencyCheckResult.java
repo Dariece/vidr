@@ -11,6 +11,7 @@ import lombok.Getter;
 public class IncompatibilityDependencyCheckResult {
  private String name;
  private GeneralIncompatibilityType type;
+ private int riskLevel;
  private boolean incompatible;
  private List<IncompatibilityDependency> incompatibleDependencies;
  private String actualVersion;
