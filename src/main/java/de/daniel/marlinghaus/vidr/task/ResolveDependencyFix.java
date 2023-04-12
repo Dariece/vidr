@@ -22,6 +22,7 @@ import org.eclipse.collections.api.list.ImmutableList;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.DomainObjectSet;
 import org.gradle.api.GradleException;
+import org.gradle.api.artifacts.ArtifactView;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvableDependencies;
@@ -29,10 +30,13 @@ import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.result.ResolutionResult;
 import org.gradle.api.artifacts.result.UnresolvedDependencyResult;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.internal.artifacts.dsl.dependencies.DependencyFactoryInternal;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.internal.component.local.model.OpaqueComponentIdentifier;
 
 /**
  * Tries to resolve the fix-versions of vulnerable dependencies from scanner report to the project
@@ -63,6 +67,17 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   private Provider<ResolvedConfiguration> resolvedConfiguration = getInternalResolvedConfiguration()
       .map(t -> t);
 
+  @Internal
+  protected abstract Property<FileCollection> getInternalArtifactFilesBeforeFixup();
+
+  /**
+   * <a href="https://docs.gradle.org/current/userguide/lazy_configuration.html">Lazy
+   * configuration</a> to share object with following task
+   */
+  @Getter
+  @Internal
+  private Provider<FileCollection> artifactFilesBeforeFixup = getInternalArtifactFilesBeforeFixup()
+      .map(t -> t);
 
   @Getter
   @Internal
@@ -71,6 +86,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   @Internal
   private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
   private List<VulnerableDependency> unresolvableDependencies = Lists.mutable.empty();
+  private Configuration runtimeClasspathOrigin;
 
   /**
    * Tries to resolve the fix-versions of vulnerable dependencies from scanner report to the project
@@ -101,9 +117,9 @@ public abstract class ResolveDependencyFix extends DefaultTask {
             dependencyFixResolver.getUnfixableDependencies());
       }
 
+      getInternalArtifactFilesBeforeFixup().set(getRuntimeClasspathBeforeFixup());
       getInternalResolvedConfiguration().set(overrideDepencyVersionToFixed(
           vulnerableFixableDependencies, new AtomicBoolean(false)));
-//      getResolvedConfiguration = resolvedConfiguration().map(t -> t);
 
       //was wenn nicht baubar? Kann Plugin weiterlaufen? -> scheinbar nein
     } catch (IOException e) {
@@ -125,12 +141,10 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   private ResolvedConfiguration overrideDepencyVersionToFixed(
       List<VulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
     //ändere die versionen der betroffenen dependencies auf die gefixten
-    var configurationContainer = getProject().getConfigurations();
-    Configuration implementationConfiguration = configurationContainer.getByName(
-        RUNTIME_CLASSPATH_CONFIGURATION_NAME);
-    resolvableDependencies = implementationConfiguration.getIncoming(); //TODO try to get each configuration and apply override action on match
+    Configuration runtimeClasspath = getRuntimeClasspath();
+    resolvableDependencies = runtimeClasspath.getIncoming(); //TODO try to get each configuration and apply override action on match
     var dependencySet = resolvableDependencies.getDependencies();
-    getLogger().info("implementationConfiguration dependencies: {}",
+    getLogger().info("runtimeClasspath dependencies: {}",
         dependencySet.stream().toList());
 
     getLogger().info("Change vulnerable dependency versions to fixed");
@@ -152,7 +166,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
             directResolvableDependencies.add(vulnerableDependency);
             getLogger().info("Match consisting of: {}", matchingDependencies.stream().toList());
             new OverrideDependencyVersion(vulnerableDependency).execute(
-                implementationConfiguration);
+                runtimeClasspath);
           } else {
             //Transitive dependencies or test configurations fail
             this.unresolvableDependencies.add(vulnerableDependency);
@@ -174,15 +188,11 @@ public abstract class ResolveDependencyFix extends DefaultTask {
         vulnerableFixableDependencies);
     if (unresolvedDependencyResults.isEmpty()) {
       //resolves and downloads configuration (dependency changes)
-      resolvedConfiguration = implementationConfiguration.getResolvedConfiguration(); //TODO analyze
-//      vulnerableFixableDependencies.forEach(
-//          v -> getLogger().quiet("{} {}", resolvedConfiguration.getFirstLevelModuleDependencies(
-//              d -> d.getName().equals(v.getName())), v)
-//      );
+      resolvedConfiguration = runtimeClasspath.getResolvedConfiguration(); //TODO analyze
       resolvedConfiguration.rethrowFailure();
       getLogger().quiet("Successful changed vulnerable dependency versions to fixed");
     } else {
-      //failure handling (jackson)
+      //failure handling (for example jackson)
       List<String> unresolvedDependencyNames = unresolvedDependencyResults.stream().map(
           unresolvedDependencyResult -> {
             String displayName = unresolvedDependencyResult.getRequested().getDisplayName();
@@ -219,5 +229,37 @@ public abstract class ResolveDependencyFix extends DefaultTask {
               .collect(UnresolvedDependencyResult::getFailure));
     }
     return resolvedConfiguration;
+  }
+
+  //Get copy of configuration instance to make overrideDependency retryable
+  private Configuration getRuntimeClasspath() {
+    //TODO get before overrideDepencyVersionToFixed() and safe in field
+    if (runtimeClasspathOrigin == null) {
+      runtimeClasspathOrigin = getProject().getConfigurations().getByName(
+          RUNTIME_CLASSPATH_CONFIGURATION_NAME);
+    }
+
+    return runtimeClasspathOrigin.copyRecursive();
+  }
+
+  //adapted by JavaPlugin.java BuildableJavaComponentImpl.getRuntimeClasspath()
+  private FileCollection getRuntimeClasspathBeforeFixup() {
+    Configuration confCopy = getRuntimeClasspath();
+    getLogger().quiet("All dependencies: {}\n",
+        confCopy.getIncoming().getResolutionResult().getAllDependencies());
+    ArtifactView view = confCopy.getIncoming().artifactView(config -> {
+      config.componentFilter(componentId -> {
+        if (componentId instanceof OpaqueComponentIdentifier) {
+          DependencyFactoryInternal.ClassPathNotation classPathNotation = ((OpaqueComponentIdentifier) componentId).getClassPathNotation();
+          return classPathNotation != DependencyFactoryInternal.ClassPathNotation.GRADLE_API
+              && classPathNotation != DependencyFactoryInternal.ClassPathNotation.LOCAL_GROOVY;
+        }
+        return true;
+      });
+    });
+//    Configuration runtimeElements = getProject().getConfigurations()
+//        .getByName(RUNTIME_ELEMENTS_CONFIGURATION_NAME);
+//    return runtimeElements.getOutgoing().getArtifacts().getFiles().plus(view.getFiles());
+    return view.getFiles();
   }
 }

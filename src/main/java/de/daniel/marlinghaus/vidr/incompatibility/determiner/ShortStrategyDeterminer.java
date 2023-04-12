@@ -6,7 +6,7 @@ import de.daniel.marlinghaus.vidr.incompatibility.type.GeneralIncompatibilityTyp
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependencyCheckResult;
 
-public class ShortStrategyDeterminer extends IncompatibilityStrategyDeterminer {
+public abstract class ShortStrategyDeterminer extends IncompatibilityStrategyDeterminer {
 
   /**
    * @param dependency
@@ -14,14 +14,6 @@ public class ShortStrategyDeterminer extends IncompatibilityStrategyDeterminer {
    */
   @Override
   public IncompatibilityChecker determineChecker(IncompatibilityDependency dependency) {
-    return null;
-  }
-
-  /**
-   * @return
-   */
-  @Override
-  public IncompatibilityChecker determineChecker() {
     return null;
   }
 

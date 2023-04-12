@@ -2,6 +2,7 @@ package de.daniel.marlinghaus.vidr.incompatibility.checker;
 
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependencyCheckResult;
+import java.nio.file.ClosedFileSystemException;
 import java.util.Set;
 import org.eclipse.collections.api.collection.MutableCollection;
 import org.eclipse.collections.api.factory.Lists;
@@ -12,6 +13,7 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.multimap.MutableMultimap;
 import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.factory.Multimaps;
+import org.gradle.api.GradleException;
 import sootup.callgraph.CallGraph;
 import sootup.callgraph.CallGraphAlgorithm;
 import sootup.callgraph.ClassHierarchyAnalysisAlgorithm;
@@ -24,34 +26,43 @@ import sootup.java.core.views.JavaView;
 
 public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
 
-  private final MutableMultimap<String, IncompatibilityDependency> duplicateClassesDi = Multimaps.mutable.set.empty();
-  private final MutableSet<MethodSignature> referencedRootProjectFeatureSetRH = Sets.mutable.empty();
-  private final MutableMap<String, Set<? extends JavaSootMethod>> referencedDuplicateClassFeatureSetRDi = Maps.mutable.empty();
-  private final MutableMultimap<String, JavaSootMethod> referencedFeatureSetRi = Multimaps.mutable.set.empty();
-  private final MutableMap<String, Set<? extends JavaSootMethod>> loadedFeatureSetLi = Maps.mutable.empty();
-  private final MutableMap<String, Set<? extends JavaSootMethod>> shadowedFeatureSetSi = Maps.mutable.empty();
+  private MutableMultimap<String, IncompatibilityDependency> duplicateClassesDi;
+  private MutableSet<MethodSignature> referencedRootProjectFeatureSetRH;
+  private MutableMap<String, Set<? extends JavaSootMethod>> referencedDuplicateClassFeatureSetRDi;
+  private MutableMultimap<String, JavaSootMethod> referencedFeatureSetRi;
+  private MutableMap<String, Set<? extends JavaSootMethod>> loadedFeatureSetLi;
+  private MutableMap<String, Set<? extends JavaSootMethod>> shadowedFeatureSetSi;
 
   private JavaView rootProjectView;
   private ImmutableList<JavaSootClass> rootProjectClasses;
-  private final MutableSet<MethodSignature> rootProjectRiskMethodSet = Sets.mutable.empty();
-
+  private MutableSet<MethodSignature> rootProjectRiskMethodSet;
 
   @Override
   protected IncompatibilityDependencyCheckResult doCheck(IncompatibilityDependency dependency) {
-    if (dependency.isRootProject()) {
+    log.quiet("Do static bytecode check");
+
+//    if (dependency.isRootProject()) {
       //define sets
+      init();
       rootProjectView = dependency.getByteCode().createOnDemandView();
       rootProjectClasses = Lists.immutable.ofAll(
           dependency.getByteCode().createOnDemandView().getClasses());
+
       defineDuplicateClasses(dependency, rootProjectClasses);
+      log.quiet("Duplicate classes (Di): {}", duplicateClassesDi);
+      log.quiet("Referenced duplicate class feature set (RDi): {}",
+          referencedDuplicateClassFeatureSetRDi);
+
       defineReferencedRootProjectFeatureSet();
+      log.quiet("Referenced root project feature set (RH): {}", referencedRootProjectFeatureSetRH);
+
       defineReferencedFeatureSet();
+      log.quiet("Referenced feature set (Ri): {}", referencedFeatureSetRi);
 
       defineShadowedFeatureSet();
-    }
+      log.quiet("Shadowed feature set (Si): {}", shadowedFeatureSetSi);
+//    }
 
-
-    //TODO refer to matching dependency for result
     MutableMultimap<String, JavaSootMethod> incompatibilities = Multimaps.mutable.set.empty();
     //check
     loadedFeatureSetLi.forEach((classSignature, li) -> {
@@ -62,8 +73,11 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
         incompatibilities.putAll(classSignature, ri);
       }
     });
+    log.quiet("Incompatibilities (Ii): {}", incompatibilities);
+    log.quiet("--Successful--\n");
 
-    return IncompatibilityDependencyCheckResult.builder().build();
+    return IncompatibilityDependencyCheckResult.builder()
+        .build();//TODO refer to matching dependency for result
   }
 
   private void defineShadowedFeatureSet() {
@@ -110,18 +124,37 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
   private void defineDuplicateClasses(IncompatibilityDependency parentDependency,
       ImmutableList<JavaSootClass> parentDependencyClasses) {
     parentDependency.getTransitiveDependencies().forEach(transitiveDependency -> {
-      ImmutableList<JavaSootClass> tdClasses = Lists.immutable.ofAll(
-          transitiveDependency.getByteCode().createOnDemandView().getClasses());
-      tdClasses.forEach(tdClass -> parentDependencyClasses.detectOptional(
-          pdClass -> tdClass.getName().equals(pdClass.getName()) || duplicateClassesDi.containsKey(
-              tdClass.getName())).ifPresent(duplicateClass -> {
-        duplicateClassesDi.put(duplicateClass.getName(), transitiveDependency);
-        duplicateClassesDi.put(duplicateClass.getName(), parentDependency);
-        defineReferencedDuplicateClassFeatureSet(duplicateClass.getName(), tdClass.getMethods());
-        //TODO if necessary add duplicate classes to each dependencyObject
-      }));
+      try {
+        ImmutableList<JavaSootClass> tdClasses = Lists.immutable.ofAll(
+            transitiveDependency.getByteCode().createOnDemandView().getClasses());
+        tdClasses.forEach(tdClass -> parentDependencyClasses.detectOptional(
+            pdClass -> tdClass.getName().equals(pdClass.getName())
+                || duplicateClassesDi.containsKey(
+                tdClass.getName())).ifPresent(duplicateClass -> {
+          duplicateClassesDi.put(duplicateClass.getName(), transitiveDependency);
+          duplicateClassesDi.put(duplicateClass.getName(), parentDependency);
+          defineReferencedDuplicateClassFeatureSet(duplicateClass.getName(), tdClass.getMethods());
+          //TODO if necessary add duplicate classes to each dependencyObject
+        }));
 
-      defineDuplicateClasses(transitiveDependency, tdClasses);
+        defineDuplicateClasses(transitiveDependency, tdClasses);
+      } catch (ClosedFileSystemException e) {
+        var message = String.format("Failed to define duplicate classes (Di) for %s ",
+            transitiveDependency.getDependencyName());
+        log.error(message);
+        throw new GradleException(message, e);
+      }
     });
+  }
+
+  private void init(){
+    duplicateClassesDi = Multimaps.mutable.set.empty();
+    referencedRootProjectFeatureSetRH = Sets.mutable.empty();
+    referencedDuplicateClassFeatureSetRDi = Maps.mutable.empty();
+    referencedFeatureSetRi = Multimaps.mutable.set.empty();
+    loadedFeatureSetLi = Maps.mutable.empty();
+    shadowedFeatureSetSi = Maps.mutable.empty();
+
+    rootProjectRiskMethodSet = Sets.mutable.empty();
   }
 }

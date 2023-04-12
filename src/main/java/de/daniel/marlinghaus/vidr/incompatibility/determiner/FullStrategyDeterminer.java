@@ -6,7 +6,7 @@ import de.daniel.marlinghaus.vidr.incompatibility.type.GeneralIncompatibilityTyp
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependencyCheckResult;
 
-public class FullStrategyDeterminer extends IncompatibilityStrategyDeterminer {
+public abstract class FullStrategyDeterminer extends IncompatibilityStrategyDeterminer {
 
   /**
    * @param dependency

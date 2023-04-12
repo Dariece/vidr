@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.factory.Lists;
@@ -15,6 +16,7 @@ import sootup.java.core.JavaProject;
 
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
+@ToString(callSuper = true)
 @Data
 public class IncompatibilityDependency extends GavDependency {
 

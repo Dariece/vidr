@@ -2,6 +2,7 @@ package de.daniel.marlinghaus.vidr.task;
 
 import static de.daniel.marlinghaus.vidr.utils.soot.SootUtil.LONG_TIME_LIB;
 
+import de.daniel.marlinghaus.vidr.incompatibility.determiner.IncompatibilityStrategyDeterminer;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import de.daniel.marlinghaus.vidr.utils.soot.SootUtil;
 import java.util.Objects;
@@ -18,6 +19,7 @@ import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
@@ -26,13 +28,15 @@ public abstract class IncompatibilityTask extends DefaultTask {
 
   @Internal
   public abstract Property<ResolvedConfiguration> getResolvedConfiguration();
-
-  @Setter
-  protected ResolvableDependencies resolvableDependencies;
+  @Internal
+  public abstract Property<FileCollection> getArtifactFilesBeforeFixup();
   @Setter
   protected String javaSourceCompatibility;
   protected IncompatibilityDependency rootProject;
-  private MutableMap<String, IncompatibilityDependency> resolvableIncompatibleDependencies = Maps.mutable.empty();
+  private final MutableMap<String, IncompatibilityDependency> resolvableIncompatibleDependencies = Maps.mutable.empty();
+
+  @Internal
+  public abstract Property<IncompatibilityStrategyDeterminer> getStrategyDeterminer();
 //  protected ImmutableMap<String, ImmutableList<JavaSootClass>> resolvedDependencyClasses;
 
   /**

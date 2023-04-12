@@ -1,18 +1,14 @@
 package de.daniel.marlinghaus.vidr.task;
 
 import de.daniel.marlinghaus.vidr.incompatibility.checker.IncompatibilityChecker;
-import de.daniel.marlinghaus.vidr.incompatibility.determiner.IncompatibilityStrategyDeterminer;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependencyCheckResult;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
-import org.gradle.api.provider.Property;
 
 public abstract class CheckCompatibility extends IncompatibilityTask {
 
 //  @Setter
 //  private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
-
-  public abstract Property<IncompatibilityStrategyDeterminer> getStrategyDeterminer();
 
   private IncompatibilityChecker actualChecker;
   private final MutableList<IncompatibilityDependencyCheckResult> dependencyResults = Lists.mutable.empty();

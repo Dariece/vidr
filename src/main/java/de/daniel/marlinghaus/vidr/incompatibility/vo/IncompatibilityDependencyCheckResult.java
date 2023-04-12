@@ -4,6 +4,7 @@ import de.daniel.marlinghaus.vidr.incompatibility.type.GeneralIncompatibilityTyp
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
+import org.eclipse.collections.api.factory.Lists;
 
 @Getter
 @Builder
@@ -15,5 +16,6 @@ public class IncompatibilityDependencyCheckResult {
  private boolean incompatible;
  private List<IncompatibilityDependency> incompatibleDependencies;
  private String actualVersion;
- private List<String> fixingVersions;
+ @Builder.Default
+ private List<String> fixingVersions = Lists.mutable.empty();
 }

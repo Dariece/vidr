@@ -7,6 +7,8 @@ import static de.daniel.marlinghaus.vidr.VidrTasks.RESOLVE_DEPENDENCY_FIX;
 import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.CRITICAL;
 import static de.daniel.marlinghaus.vidr.vulnerability.report.vo.CvssSeverity.HIGH;
 
+import de.daniel.marlinghaus.vidr.incompatibility.determiner.IncompatibilityStrategyDeterminer;
+import de.daniel.marlinghaus.vidr.incompatibility.determiner.ShortStrategyDeterminer;
 import de.daniel.marlinghaus.vidr.task.CheckCompatibility;
 import de.daniel.marlinghaus.vidr.task.CreateVulnerabilityReport;
 import de.daniel.marlinghaus.vidr.task.ResolveDependencyFix;
@@ -22,13 +24,16 @@ import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaBasePlugin;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.services.BuildService;
+import org.gradle.api.services.BuildServiceRegistry;
+import org.gradle.api.services.BuildServiceSpec;
 
 public class VidrPlugin implements Plugin<Project> {
 
 
   private ProviderFactory providerFactory;
+  private BuildServiceRegistry serviceRegistry;
 
   /**
    * Configures the needed tasks and their configuration to apply to the target project
@@ -43,18 +48,10 @@ public class VidrPlugin implements Plugin<Project> {
     Path reportPath = targetProject.getBuildDir().toPath().resolve("reports");
 
     // register shared services like several incompatibilityChecker or vulnerabilityScanners
-    Provider<VulnerabilityScanStrategyDeterminer> strategyDeterminer = targetProject.getGradle()
-        .getSharedServices()
-        .registerIfAbsent("vulnerabilityStrategyDeterminer",
-            VulnerabilityScanStrategyDeterminer.class,
-            spec -> spec.getParameters().getIdentifier()
-                .set(spec.getParameters().getIdentifier().getOrElse(
-                    VulnerabilityIdentifier.METADATA_DB_COMPARISION)));//TODO make configurable
-//    registerBuildServices(targetProject);
+    registerBuildServices(targetProject);
 
     // configure sbom creation
-    CycloneDxTask createSbomTask = tasks.register(CREATE_SBOM.getName(),
-        CycloneDxTask.class,
+    CycloneDxTask createSbomTask = tasks.register(CREATE_SBOM.getName(), CycloneDxTask.class,
         sbomTask -> {
           sbomTask.setGroup(VidrGroups.REPORTING.getName());
           sbomTask.setProjectType("application");
@@ -69,33 +66,29 @@ public class VidrPlugin implements Plugin<Project> {
 
     // configure vuln report creation
     CreateVulnerabilityReport createVulnerabilityReportTask = tasks.register(
-        CREATE_VULNERABILITY_REPORT.getName(), CreateVulnerabilityReport.class,
-        vulnReportTask -> {
+        CREATE_VULNERABILITY_REPORT.getName(), CreateVulnerabilityReport.class, vulnReportTask -> {
 
           String stage = getPropertyValue(null, null, "SPRING_PROFILES_ACTIVE");
           ScanJob scanJob = ScanJob.builder() // TODO make type nested in task
-              .applicationName(projectName)
-              .format(ScanFormat.SBOM)
-              .stage(StringUtils.notBlank(stage) ? stage : "local")
-              .pipelineRun(getPropertyValue(null, null,
-                  "PIPELINE_RUN_NAME")) //write context.pipelineRun.name to env using actual tekton task
+              .applicationName(projectName).format(ScanFormat.SBOM)
+              .stage(StringUtils.notBlank(stage) ? stage : "local").pipelineRun(
+                  getPropertyValue(null, null,
+                      "PIPELINE_RUN_NAME")) //write context.pipelineRun.name to env using actual tekton task
               .severities(List.of(HIGH, CRITICAL)) //TODO make configurable
               .build();
           Path scanObjectFile = createSbomTask.getDestination().get().toPath()
-              .resolve(createSbomTask.getOutputName()
-                  .get() + ".json");
+              .resolve(createSbomTask.getOutputName().get() + ".json");
 
           vulnReportTask.setGroup(VidrGroups.REPORTING.getName());
-          vulnReportTask.getStrategyDeterminer().set(strategyDeterminer);
+          vulnReportTask.getStrategyDeterminer().set(
+              (VulnerabilityScanStrategyDeterminer) getService("vulnerabilityStrategyDeterminer"));
           // define scan service default url
 //          vulnReportTask.getServiceUrl().set(
 //              vulnReportTask.getServiceUrl().getOrElse(URI.create("http://localhost:8100")));
-          vulnReportTask.setScanObjectFile(
-              scanObjectFile);
+          vulnReportTask.setScanObjectFile(scanObjectFile);
           vulnReportTask.setScanJob(scanJob);
           vulnReportTask.setOutputFile(scanObjectFile.getParent().resolve(
-              String.format("%s-%s-%s-trivy-report.json",
-                  scanJob.getApplicationName(),
+              String.format("%s-%s-%s-trivy-report.json", scanJob.getApplicationName(),
                   scanJob.getStage(),
                   scanJob.getPipelineRun())));// define output filename depending on scanJob
 
@@ -106,8 +99,7 @@ public class VidrPlugin implements Plugin<Project> {
 
     //configure dependency fix resolve
     ResolveDependencyFix resolveDependencyFixTask = tasks.register(RESOLVE_DEPENDENCY_FIX.getName(),
-        ResolveDependencyFix.class,
-        resolveFixTask -> {
+        ResolveDependencyFix.class, resolveFixTask -> {
           //TODO configure
           resolveFixTask.setReportFile(createVulnerabilityReportTask.getOutputFile());
 
@@ -120,8 +112,7 @@ public class VidrPlugin implements Plugin<Project> {
 
     //TODO vorhandene Duplikate an Dependencies und falschen transitiven Abhängigkeitsversionen vermeiden
     CycloneDxTask createFixedSbomTask = tasks.register(CREATE_SBOM.getName() + "Fixed",
-        CycloneDxTask.class,
-        sbomTask -> {
+        CycloneDxTask.class, sbomTask -> {
           sbomTask.setGroup(VidrGroups.REPORTING.getName());
           sbomTask.setProjectType("application");
           sbomTask.setSchemaVersion("1.4");
@@ -139,18 +130,18 @@ public class VidrPlugin implements Plugin<Project> {
 
     //check dependency compatibility
     CheckCompatibility checkCompatibilityTask = tasks.register(CHECK_COMPATIBILITY.getName(),
-        CheckCompatibility.class,
-        checkTask -> {
+        CheckCompatibility.class, checkTask -> {
           //soot properties
           String javaSourceCompatibility = getPropertyValue(null, null, "java.sourceCompatibility");
           checkTask.setJavaSourceCompatibility(
               StringUtils.notBlank(javaSourceCompatibility) ? javaSourceCompatibility
                   : JavaVersion.VERSION_17.toString());
-
-          checkTask.setResolvableDependencies(resolveDependencyFixTask.getResolvableDependencies());
-          checkTask.getResolvedConfiguration().set(resolveDependencyFixTask.getResolvedConfiguration());
-//          checkTask.setDirectResolvableDependencies(
-//              resolveDependencyFixTask.getDirectResolvableDependencies());
+          checkTask.getStrategyDeterminer().set(
+              (IncompatibilityStrategyDeterminer) getService("incompatibilityStrategyDeterminer"));
+          checkTask.getResolvedConfiguration()
+              .set(resolveDependencyFixTask.getResolvedConfiguration());
+          checkTask.getArtifactFilesBeforeFixup().set(
+              resolveDependencyFixTask.getArtifactFilesBeforeFixup());
 
           // define execution order
           checkTask.mustRunAfter(resolveDependencyFixTask);
@@ -160,6 +151,17 @@ public class VidrPlugin implements Plugin<Project> {
   }
 
   private void registerBuildServices(Project project) {
+    serviceRegistry = project.getGradle().getSharedServices();
+
+    serviceRegistry.registerIfAbsent("vulnerabilityStrategyDeterminer",
+        VulnerabilityScanStrategyDeterminer.class, spec -> spec.getParameters().getIdentifier().set(
+            spec.getParameters().getIdentifier().getOrElse(
+                VulnerabilityIdentifier.METADATA_DB_COMPARISION)));//TODO make configurable
+
+    serviceRegistry.registerIfAbsent("incompatibilityStrategyDeterminer",
+        ShortStrategyDeterminer.class,
+        BuildServiceSpec::getParameters); //TODO use configurable parameters
+
 //    project.getGradle().getSharedServices().registerIfAbsent("trivyClient", TrivyClientService.class, spec -> spec.getParameters().getServiceUrl().set(
 //        URI.create("http://localhost:8100")));
 
@@ -172,6 +174,10 @@ public class VidrPlugin implements Plugin<Project> {
 //    vulnerabilityScanServices.register("trivyClient", TrivyClientService.class);
 //    vulnerabilityScanServices.register("steadyClient", SteadyClientService.class);
 
+  }
+
+  private BuildService<?> getService(String name) {
+    return serviceRegistry.getRegistrations().getByName(name).getService().get();
   }
 
   //TODO write Util Buildservice for this
