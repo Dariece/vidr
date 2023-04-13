@@ -63,3 +63,4 @@ Ohne leere Zeilen und Kommentare
 ```bash
 find src/main -name '*.java' | xargs grep -vP '^\s*$|\/\*(.|[\r\n])*?\*\/|^(\s)*?(\/\/)+(.)*?$' | wc -l
 ```
+2339
