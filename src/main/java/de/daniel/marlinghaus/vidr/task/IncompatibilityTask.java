@@ -5,36 +5,51 @@ import static de.daniel.marlinghaus.vidr.utils.soot.SootUtil.LONG_TIME_LIB;
 import de.daniel.marlinghaus.vidr.incompatibility.determiner.IncompatibilityStrategyDeterminer;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import de.daniel.marlinghaus.vidr.utils.soot.SootUtil;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Setter;
+import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.factory.Maps;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ArtifactView;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvableDependencies;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
-import org.gradle.api.file.FileCollection;
+import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class IncompatibilityTask extends DefaultTask {
 
+  //Shared Properties
   @Internal
   public abstract Property<ResolvedConfiguration> getResolvedConfiguration();
+
   @Internal
-  public abstract Property<FileCollection> getArtifactFilesBeforeFixup();
+  public abstract Property<ArtifactView> getArtifactFilesBeforeFixup();
+
+  @Internal
+  public abstract Property<ResolvableDependencies> getResolvableDependencies();
+
+  //Internal
   @Setter
   protected String javaSourceCompatibility;
   protected IncompatibilityDependency rootProject;
   private final MutableMap<String, IncompatibilityDependency> resolvableIncompatibleDependencies = Maps.mutable.empty();
+  private MutableSet<ResolvedDependencyResult> notResolvedDependencyVersions;
 
+  //Build Service
   @Internal
   public abstract Property<IncompatibilityStrategyDeterminer> getStrategyDeterminer();
 //  protected ImmutableMap<String, ImmutableList<JavaSootClass>> resolvedDependencyClasses;
@@ -46,31 +61,47 @@ public abstract class IncompatibilityTask extends DefaultTask {
   void run() {
     Project project = getProject();
     int projectJavaVersion = JavaVersion.toVersion(javaSourceCompatibility).ordinal() + 1;
-    rootProject = IncompatibilityDependency.builder()
-        .name(project.getName())
-        .group(project.getGroup().toString())
-        .version(project.getVersion().toString())
-        .rootProject(true)
-        .byteCode(SootUtil.configureProject(
-            projectJavaVersion,
-            getProject().getBuildDir().toPath(), true)).build();
+    rootProject = IncompatibilityDependency.builder().name(project.getName())
+        .group(project.getGroup().toString()).version(project.getVersion().toString())
+        .rootProject(true).byteCode(
+            SootUtil.configureProject(projectJavaVersion, getProject().getBuildDir().toPath(),
+                true)).build();
 
-    //TODO get all unresolved configuration/ not actual dependency versions to check version conflict
-//    List<Path> resolvedJarFiles = getResolvedConfiguration().get().getResolvedArtifacts().stream()
-//        .filter(a -> {
-//          var module = a.getModuleVersion().getId().getModule();
-//          return !LONG_TIME_LIB.contains(module.toString());
-//        }).map(ResolvedArtifact::getFile).filter(f -> f.getName().endsWith(".jar"))
-//        .map(File::toPath).toList();
-
-    //TODO only get project for each dependency
-//    resolvedDependencyClasses = SootUtil.getJarDependencyClasses(
-//        resolvedJarFiles);
+    //get not actual dependency versions to check version conflict
+    notResolvedDependencyVersions = Sets.mutable.empty();
+    getResolvableDependencies().get().getResolutionResult().getAllComponents()
+        .forEach(resolvedComponent -> {
+          resolvedComponent.getDependents().forEach(availableDependencyVersion -> {
+            if (!Objects.equals(resolvedComponent.getModuleVersion().toString(),
+                availableDependencyVersion.getRequested().getDisplayName())) {
+              notResolvedDependencyVersions.add(availableDependencyVersion);
+            }
+          });
+        });
 
     for (ResolvedDependency directProjectDependency : getResolvedConfiguration().get()
         .getFirstLevelModuleDependencies()) {
       buildDependencyGraph(projectJavaVersion, directProjectDependency, rootProject);
     }
+
+    //Fixme test only
+////    MutableList<IncompatibilityDependency> dependenciesBeforeFixup = Lists.mutable.empty();
+//    getArtifactFilesBeforeFixup().get().getArtifacts().forEach(
+//        a -> {
+//          String[] identifier = a.getVariant().getDisplayName().split(":");
+//          IncompatibilityDependency dependency = IncompatibilityDependency.builder()
+//              .name(identifier[1])
+//              .group(identifier[0])
+//              .version(identifier[2].split(" ")[0].trim())
+//              .byteCode(SootUtil.tryGetProjectForJavaVersion(a.getFile().toPath(),
+//                  projectJavaVersion))
+//              .transitiveProjectDependency(false)
+//              .build();
+//          rootProject.getTransitiveDependencies().add(dependency);
+////          dependenciesBeforeFixup.add(dependency);
+//        }
+//    );
+////    getLogger().quiet("dependenciesBeforeFixup: {}", dependenciesBeforeFixup);
 
     execute();
   }
@@ -83,24 +114,42 @@ public abstract class IncompatibilityTask extends DefaultTask {
    * @param parent             parent dependency (or root project)
    */
   //adapted from CycloneDxTask
-  private void buildDependencyGraph(int projectJavaVersion,
-      ResolvedDependency directDependency, IncompatibilityDependency parent) {
+  private void buildDependencyGraph(int projectJavaVersion, ResolvedDependency directDependency,
+      IncompatibilityDependency parent) {
 
     getJarArtifact(directDependency).ifPresent(resolvedArtifact -> {
-      getLogger().debug("__{}__", parent.getDependencyName());
-      getLogger().debug("    ++{}  ", directDependency.getModule());
-
       var identifier = resolvedArtifact.getModuleVersion().getId();
       if (!LONG_TIME_LIB.contains(identifier.getModule().toString())) {
         //build direct dependency
+        Path artifactPath = resolvedArtifact.getFile().toPath();
         IncompatibilityDependency dependency = IncompatibilityDependency.builder()
-            .name(identifier.getName())
-            .group(identifier.getGroup())
+            .name(identifier.getName()).group(identifier.getGroup())
             .version(identifier.getVersion())
-            .byteCode(SootUtil.tryGetProjectForJavaVersion(resolvedArtifact.getFile().toPath(),
-                projectJavaVersion))
-            .transitiveProjectDependency(!parent.isRootProject())
-            .build();
+            .byteCode(SootUtil.tryGetProjectForJavaVersion(artifactPath, projectJavaVersion))
+            .transitiveProjectDependency(!parent.isRootProject()).build();
+
+        notResolvedDependencyVersions.detectOptional(
+                notResolved -> Objects.equals(notResolved.getSelected().getModuleVersion(), identifier)
+                    && notResolved.getRequested().getDisplayName().split(":").length > 2)
+            .ifPresent(notResolvedDependency -> {
+              IncompatibilityDependency duplicate = dependency.copy();
+              String newDependencyIdentifier = notResolvedDependency.getRequested()
+                  .getDisplayName();
+              getLogger().info("Resolve duplicate Dependency: {}", notResolvedDependency);
+              String[] nameSplit = newDependencyIdentifier.split(":");
+              duplicate.setVersion(nameSplit[2]);
+
+              //create anonymous configuration with dependency and resolve it to get correct artifact path
+              final Dependency jar = getProject().getDependencies().create(newDependencyIdentifier);
+              final Configuration jarConf = getProject().getConfigurations()
+                  .detachedConfiguration(jar);
+
+              duplicate.setByteCode(SootUtil.tryGetProjectForJavaVersion(
+                  jarConf.resolve().stream().findFirst().orElseThrow().toPath(),
+                  projectJavaVersion));
+
+              parent.getTransitiveDependencies().add(duplicate);
+            });
 
         //add direct dependency to parent
         parent.getTransitiveDependencies().add(dependency);
@@ -109,13 +158,12 @@ public abstract class IncompatibilityTask extends DefaultTask {
         if (!transitiveDependencies.isEmpty()) {
           String dependencyUid = identifier.toString();
           //build transitive dependencies
-          transitiveDependencies.forEach(
-              transitiveDependency -> {
-                if (!resolvableIncompatibleDependencies.containsKey(dependencyUid)) {
-                  resolvableIncompatibleDependencies.put(dependencyUid, dependency);
-                  buildDependencyGraph(projectJavaVersion, transitiveDependency, dependency);
-                }
-              });
+          transitiveDependencies.forEach(transitiveDependency -> {
+            if (!resolvableIncompatibleDependencies.containsKey(dependencyUid)) {
+              resolvableIncompatibleDependencies.put(dependencyUid, dependency);
+              buildDependencyGraph(projectJavaVersion, transitiveDependency, dependency);
+            }
+          });
           resolvableIncompatibleDependencies.remove(dependencyUid);
         }
       }
@@ -142,8 +190,7 @@ public abstract class IncompatibilityTask extends DefaultTask {
 
   private void logDependency(IncompatibilityDependency root, AtomicInteger dependencyDepth) {
     String dependencyUid = String.format("%s:%s", root.getDependencyName(), root.getVersion());
-    getLogger().quiet("{}", String.format("%" + dependencyDepth.get() + "s",
-        dependencyUid));
+    getLogger().quiet("{}", String.format("%" + dependencyDepth.get() + "s", dependencyUid));
   }
 
   //adapted from CycloneDxTask

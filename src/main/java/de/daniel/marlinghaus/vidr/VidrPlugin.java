@@ -25,6 +25,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.publish.plugins.PublishingPlugin;
 import org.gradle.api.services.BuildService;
 import org.gradle.api.services.BuildServiceRegistry;
 import org.gradle.api.services.BuildServiceSpec;
@@ -108,6 +109,8 @@ public class VidrPlugin implements Plugin<Project> {
           resolveFixTask.mustRunAfter(createVulnerabilityReportTask);
           //build after to safe result
           resolveFixTask.finalizedBy(tasks.named(JavaBasePlugin.BUILD_TASK_NAME).get());
+          resolveFixTask.finalizedBy(
+              tasks.named(PublishingPlugin.PUBLISH_LIFECYCLE_TASK_NAME + "ToMavenLocal").get());
         }).get();
 
     //TODO vorhandene Duplikate an Dependencies und falschen transitiven Abhängigkeitsversionen vermeiden
@@ -140,6 +143,8 @@ public class VidrPlugin implements Plugin<Project> {
               (IncompatibilityStrategyDeterminer) getService("incompatibilityStrategyDeterminer"));
           checkTask.getResolvedConfiguration()
               .set(resolveDependencyFixTask.getResolvedConfiguration());
+          checkTask.getResolvableDependencies()
+              .set(resolveDependencyFixTask.getResolvableDependencies());
           checkTask.getArtifactFilesBeforeFixup().set(
               resolveDependencyFixTask.getArtifactFilesBeforeFixup());
 
@@ -161,19 +166,6 @@ public class VidrPlugin implements Plugin<Project> {
     serviceRegistry.registerIfAbsent("incompatibilityStrategyDeterminer",
         ShortStrategyDeterminer.class,
         BuildServiceSpec::getParameters); //TODO use configurable parameters
-
-//    project.getGradle().getSharedServices().registerIfAbsent("trivyClient", TrivyClientService.class, spec -> spec.getParameters().getServiceUrl().set(
-//        URI.create("http://localhost:8100")));
-
-//    project.getObjects().namedDomainObjectSet(VulnerabilityScanService.class);
-
-//    ExtensiblePolymorphicDomainObjectContainer<VulnerabilityScanService> vulnerabilityScanServices = project.getObjects()
-//        .polymorphicDomainObjectContainer(VulnerabilityScanService.class);
-//    vulnerabilityScanServices.registerBinding(VulnerabilityScanService.class, TrivyClientService.class);
-//    vulnerabilityScanServices.registerBinding(VulnerabilityScanService.class, SteadyClientService.class);
-//    vulnerabilityScanServices.register("trivyClient", TrivyClientService.class);
-//    vulnerabilityScanServices.register("steadyClient", SteadyClientService.class);
-
   }
 
   private BuildService<?> getService(String name) {

@@ -13,6 +13,7 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.factory.Lists;
 import org.gradle.api.artifacts.Configuration;
 import sootup.java.core.JavaProject;
+import sootup.java.core.views.JavaView;
 
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
@@ -30,6 +31,7 @@ public class IncompatibilityDependency extends GavDependency {
   private FileInputStream sourceCode;
   //  private FileInputStream byteCode;
   private JavaProject byteCode;
+//  private JavaView byteCode;
   @Builder.Default
   private MutableList<IncompatibilityDependency> transitiveDependencies = Lists.mutable.empty();
 
@@ -37,4 +39,16 @@ public class IncompatibilityDependency extends GavDependency {
   private boolean rootProject = false;
   @Builder.Default
   private boolean transitiveProjectDependency = false;
+
+  public IncompatibilityDependency copy(){
+    return IncompatibilityDependency.builder()
+        .byteCode(this.getByteCode())
+        .group(this.getGroup())
+        .name(this.getName())
+        .version(this.getVersion())
+        .rootProject(this.isRootProject())
+        .transitiveDependencies(this.getTransitiveDependencies())
+        .configuration(this.getConfiguration())
+        .build();
+  }
 }

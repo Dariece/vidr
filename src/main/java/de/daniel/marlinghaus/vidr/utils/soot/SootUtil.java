@@ -13,17 +13,15 @@ import org.eclipse.collections.api.set.ImmutableSet;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
-import sootup.callgraph.AbstractCallGraphAlgorithm;
 import sootup.callgraph.CallGraph;
-import sootup.callgraph.RapidTypeAnalysisAlgorithm;
 import sootup.core.inputlocation.AnalysisInputLocation;
-import sootup.core.model.Method;
 import sootup.core.model.SourceType;
 import sootup.java.bytecode.inputlocation.PathBasedAnalysisInputLocation;
 import sootup.java.core.JavaProject;
 import sootup.java.core.JavaSootClass;
 import sootup.java.core.JavaSootMethod;
 import sootup.java.core.language.JavaLanguage;
+import sootup.java.core.views.JavaView;
 
 public class SootUtil {
 
@@ -95,6 +93,21 @@ public class SootUtil {
     } catch (IllegalArgumentException e) {
       if (javaVersion >= 8) {
         return tryGetProjectForJavaVersion(path, --javaVersion);
+      }
+      throw new GradleException(
+          String.format("%s: Could not resolve javaVersion for dependency jar %s",
+              SootUtil.class.getName(), path), e);
+    }
+  }
+
+  public static JavaView tryGetViewForJavaVersion(Path path,
+      int javaVersion) {
+    try {
+      log.debug("JavaVersion: {}", javaVersion);
+      return configureProject(javaVersion, path, false).createFullView();
+    } catch (IllegalArgumentException e) {
+      if (javaVersion >= 8) {
+        return tryGetViewForJavaVersion(path, --javaVersion);
       }
       throw new GradleException(
           String.format("%s: Could not resolve javaVersion for dependency jar %s",

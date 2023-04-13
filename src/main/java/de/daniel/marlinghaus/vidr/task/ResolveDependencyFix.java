@@ -68,7 +68,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       .map(t -> t);
 
   @Internal
-  protected abstract Property<FileCollection> getInternalArtifactFilesBeforeFixup();
+  protected abstract Property<ArtifactView> getInternalArtifactFilesBeforeFixup();
 
   /**
    * <a href="https://docs.gradle.org/current/userguide/lazy_configuration.html">Lazy
@@ -76,12 +76,17 @@ public abstract class ResolveDependencyFix extends DefaultTask {
    */
   @Getter
   @Internal
-  private Provider<FileCollection> artifactFilesBeforeFixup = getInternalArtifactFilesBeforeFixup()
+  private Provider<ArtifactView> artifactFilesBeforeFixup = getInternalArtifactFilesBeforeFixup()
       .map(t -> t);
+
+  @Internal
+  protected abstract Property<ResolvableDependencies> getInternalResolvableDependencies();
 
   @Getter
   @Internal
-  private ResolvableDependencies resolvableDependencies;
+  private Provider<ResolvableDependencies> resolvableDependencies = getInternalResolvableDependencies()
+      .map(t -> t);
+
   @Getter
   @Internal
   private List<VulnerableDependency> directResolvableDependencies = Lists.mutable.empty();
@@ -142,8 +147,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
       List<VulnerableDependency> vulnerableFixableDependencies, AtomicBoolean isRetryable) {
     //ändere die versionen der betroffenen dependencies auf die gefixten
     Configuration runtimeClasspath = getRuntimeClasspath();
-    resolvableDependencies = runtimeClasspath.getIncoming(); //TODO try to get each configuration and apply override action on match
-    var dependencySet = resolvableDependencies.getDependencies();
+    getInternalResolvableDependencies().set(runtimeClasspath.getIncoming());
+    var dependencySet = getInternalResolvableDependencies().get().getDependencies();
     getLogger().info("runtimeClasspath dependencies: {}",
         dependencySet.stream().toList());
 
@@ -179,7 +184,7 @@ public abstract class ResolveDependencyFix extends DefaultTask {
 
     ResolvedConfiguration resolvedConfiguration;
     //evaluate resolution before resolve dependencies
-    ResolutionResult resolutionResult = resolvableDependencies.getResolutionResult();
+    ResolutionResult resolutionResult = getInternalResolvableDependencies().get().getResolutionResult();
 //        getLogger().info("Resolution result: {}", resolutionResult.getAllDependencies());
     List<UnresolvedDependencyResult> unresolvedDependencyResults = (List<UnresolvedDependencyResult>) resolutionResult.getAllDependencies()
         .stream()
@@ -243,10 +248,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
   }
 
   //adapted by JavaPlugin.java BuildableJavaComponentImpl.getRuntimeClasspath()
-  private FileCollection getRuntimeClasspathBeforeFixup() {
+  private ArtifactView getRuntimeClasspathBeforeFixup() {
     Configuration confCopy = getRuntimeClasspath();
-    getLogger().quiet("All dependencies: {}\n",
-        confCopy.getIncoming().getResolutionResult().getAllDependencies());
     ArtifactView view = confCopy.getIncoming().artifactView(config -> {
       config.componentFilter(componentId -> {
         if (componentId instanceof OpaqueComponentIdentifier) {
@@ -260,6 +263,8 @@ public abstract class ResolveDependencyFix extends DefaultTask {
 //    Configuration runtimeElements = getProject().getConfigurations()
 //        .getByName(RUNTIME_ELEMENTS_CONFIGURATION_NAME);
 //    return runtimeElements.getOutgoing().getArtifacts().getFiles().plus(view.getFiles());
-    return view.getFiles();
+
+//    return view.getFiles();
+    return view;
   }
 }
