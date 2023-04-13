@@ -3,6 +3,7 @@ package de.daniel.marlinghaus.vidr.utils.soot;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
@@ -18,6 +19,7 @@ import sootup.core.inputlocation.AnalysisInputLocation;
 import sootup.core.model.SourceType;
 import sootup.java.bytecode.inputlocation.PathBasedAnalysisInputLocation;
 import sootup.java.core.JavaProject;
+import sootup.java.core.JavaProject.JavaProjectBuilder;
 import sootup.java.core.JavaSootClass;
 import sootup.java.core.JavaSootMethod;
 import sootup.java.core.language.JavaLanguage;
@@ -44,6 +46,20 @@ public class SootUtil {
     JavaProject project = JavaProject.builder(language).addInputLocation(inputLocation).build();
 //    log.quiet("{}:  {}", binaryPath.getFileName(), project.getSourceTypeSpecifier());
     return project;
+  }
+
+  public static JavaProjectBuilder configureProjectBuilder(int javaVersion, Path binaryPath,
+      boolean isRootProject) {
+    JavaLanguage language = new JavaLanguage(javaVersion);
+    AnalysisInputLocation<JavaSootClass> inputLocation = new PathBasedAnalysisInputLocation(
+        binaryPath, isRootProject ? SourceType.Application : SourceType.Library);
+
+    return JavaProject.builder(language).addInputLocation(inputLocation);
+  }
+
+  public static void addByteSources(JavaProjectBuilder javaProject,
+      AnalysisInputLocation<? extends JavaSootClass> inputLocation) {
+    javaProject.addInputLocation((AnalysisInputLocation<JavaSootClass>) inputLocation);
   }
 
   public static ImmutableList<JavaSootClass> getAllProjectClasses(JavaProject javaProject) {
@@ -115,8 +131,9 @@ public class SootUtil {
     }
   }
 
-  public static Map<JavaSootMethod,List<CallGraph>> retrieveEveryCallgraphForClass(JavaSootClass clazz) {
-    Map<JavaSootMethod,List<CallGraph>> callGraphs = Maps.mutable.empty();
+  public static Map<JavaSootMethod, List<CallGraph>> retrieveEveryCallgraphForClass(
+      JavaSootClass clazz) {
+    Map<JavaSootMethod, List<CallGraph>> callGraphs = Maps.mutable.empty();
     if (!clazz.isJavaLibraryClass()) { //Calculate callgraph for JVM Classes like System is expensive
       clazz.getMethods().forEach(m -> {
 //       callGraphs.put(m,new RapidTypeAnalysisAlgorithm(clazz, clazz.getType()))

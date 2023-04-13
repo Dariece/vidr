@@ -24,8 +24,8 @@ public abstract class CheckCompatibility extends IncompatibilityTask {
     var rootProjectResult = actualChecker.check(rootProject);
 
     //check direct dependencies of root project
-    rootProject.getTransitiveDependencies().forEach(dependency -> {
-      dependencyResults.add(actualChecker.check(dependency));
-    });
+//    rootProject.getTransitiveDependencies().forEach(dependency -> {
+//      dependencyResults.add(actualChecker.check(dependency));
+//    });
   }
 }

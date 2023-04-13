@@ -31,6 +31,7 @@ public class IncompatibilityDependency extends GavDependency {
   private FileInputStream sourceCode;
   //  private FileInputStream byteCode;
   private JavaProject byteCode;
+  private JavaProject.JavaProjectBuilder byteCodeBuilder;
 //  private JavaView byteCode;
   @Builder.Default
   private MutableList<IncompatibilityDependency> transitiveDependencies = Lists.mutable.empty();

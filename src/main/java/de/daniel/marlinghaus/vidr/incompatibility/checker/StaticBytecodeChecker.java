@@ -13,7 +13,6 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.multimap.MutableMultimap;
 import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.factory.Multimaps;
-import org.gradle.api.GradleException;
 import sootup.callgraph.CallGraph;
 import sootup.callgraph.CallGraphAlgorithm;
 import sootup.callgraph.ClassHierarchyAnalysisAlgorithm;
@@ -41,7 +40,7 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
   protected IncompatibilityDependencyCheckResult doCheck(IncompatibilityDependency dependency) {
     log.quiet("Do static bytecode check");
 
-//    if (dependency.isRootProject()) {
+    if (dependency.isRootProject()) {
       //define sets
       init();
       rootProjectView = dependency.getByteCode().createOnDemandView();
@@ -61,7 +60,7 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
 
       defineShadowedFeatureSet();
       log.quiet("Shadowed feature set (Si): {}", shadowedFeatureSetSi);
-//    }
+    }
 
     MutableMultimap<String, JavaSootMethod> incompatibilities = Multimaps.mutable.set.empty();
     //check
@@ -142,12 +141,13 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
         var message = String.format("Failed to define duplicate classes (Di) for %s ",
             transitiveDependency.getDependencyName());
         log.error(message);
-        throw new GradleException(message, e);
+        //Fixme analyze ClosedFileSystemException reason for some dependency jars
+//        throw new GradleException(message, e);
       }
     });
   }
 
-  private void init(){
+  private void init() {
     duplicateClassesDi = Multimaps.mutable.set.empty();
     referencedRootProjectFeatureSetRH = Sets.mutable.empty();
     referencedDuplicateClassFeatureSetRDi = Maps.mutable.empty();

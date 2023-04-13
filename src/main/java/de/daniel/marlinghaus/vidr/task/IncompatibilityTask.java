@@ -63,9 +63,14 @@ public abstract class IncompatibilityTask extends DefaultTask {
     int projectJavaVersion = JavaVersion.toVersion(javaSourceCompatibility).ordinal() + 1;
     rootProject = IncompatibilityDependency.builder().name(project.getName())
         .group(project.getGroup().toString()).version(project.getVersion().toString())
-        .rootProject(true).byteCode(
+        .rootProject(true)
+        .byteCode(
             SootUtil.configureProject(projectJavaVersion, getProject().getBuildDir().toPath(),
-                true)).build();
+                true))
+//        .byteCodeBuilder(SootUtil.configureProjectBuilder(projectJavaVersion,
+//            getProject().getBuildDir().toPath(),
+//            true))
+        .build();
 
     //get not actual dependency versions to check version conflict
     notResolvedDependencyVersions = Sets.mutable.empty();
@@ -120,26 +125,37 @@ public abstract class IncompatibilityTask extends DefaultTask {
     getJarArtifact(directDependency).ifPresent(resolvedArtifact -> {
       var identifier = resolvedArtifact.getModuleVersion().getId();
       if (!LONG_TIME_LIB.contains(identifier.getModule().toString())) {
-        //build direct dependency
+        //build direct childDependency
         Path artifactPath = resolvedArtifact.getFile().toPath();
-        IncompatibilityDependency dependency = IncompatibilityDependency.builder()
+        IncompatibilityDependency childDependency = IncompatibilityDependency.builder()
             .name(identifier.getName()).group(identifier.getGroup())
             .version(identifier.getVersion())
+            //TODO add child jar source to same soot project
             .byteCode(SootUtil.tryGetProjectForJavaVersion(artifactPath, projectJavaVersion))
             .transitiveProjectDependency(!parent.isRootProject()).build();
+//        childDependency.setByteCodeBuilder(SootUtil.configureProjectBuilder(
+//            childDependency.getByteCode().getLanguage().getVersion(), artifactPath, false));
+
+        //add projectBuilder for childDependency with correct javaVersion
+//        SootUtil.addByteSources(parent.getByteCodeBuilder(),
+//            childDependency.getByteCode().getInputLocations().stream().findFirst()
+//                .get()); //Fixme causes JavaHeap Exception
+//        SootUtil.addByteSources(rootProject.getByteCodeBuilder(),
+//            SootUtil.tryGetProjectForJavaVersion(artifactPath, projectJavaVersion).getInputLocations().stream().findFirst()
+//                .get()); //Fixme causes ClosedFileSystemException Exception
 
         notResolvedDependencyVersions.detectOptional(
                 notResolved -> Objects.equals(notResolved.getSelected().getModuleVersion(), identifier)
                     && notResolved.getRequested().getDisplayName().split(":").length > 2)
             .ifPresent(notResolvedDependency -> {
-              IncompatibilityDependency duplicate = dependency.copy();
+              IncompatibilityDependency duplicate = childDependency.copy();
               String newDependencyIdentifier = notResolvedDependency.getRequested()
                   .getDisplayName();
               getLogger().info("Resolve duplicate Dependency: {}", notResolvedDependency);
               String[] nameSplit = newDependencyIdentifier.split(":");
               duplicate.setVersion(nameSplit[2]);
 
-              //create anonymous configuration with dependency and resolve it to get correct artifact path
+              //create anonymous configuration with childDependency and resolve it to get correct artifact path
               final Dependency jar = getProject().getDependencies().create(newDependencyIdentifier);
               final Configuration jarConf = getProject().getConfigurations()
                   .detachedConfiguration(jar);
@@ -151,8 +167,8 @@ public abstract class IncompatibilityTask extends DefaultTask {
               parent.getTransitiveDependencies().add(duplicate);
             });
 
-        //add direct dependency to parent
-        parent.getTransitiveDependencies().add(dependency);
+        //add direct childDependency to parent
+        parent.getTransitiveDependencies().add(childDependency);
 
         Set<ResolvedDependency> transitiveDependencies = directDependency.getChildren();
         if (!transitiveDependencies.isEmpty()) {
@@ -160,12 +176,15 @@ public abstract class IncompatibilityTask extends DefaultTask {
           //build transitive dependencies
           transitiveDependencies.forEach(transitiveDependency -> {
             if (!resolvableIncompatibleDependencies.containsKey(dependencyUid)) {
-              resolvableIncompatibleDependencies.put(dependencyUid, dependency);
-              buildDependencyGraph(projectJavaVersion, transitiveDependency, dependency);
+              resolvableIncompatibleDependencies.put(dependencyUid, childDependency);
+              buildDependencyGraph(projectJavaVersion, transitiveDependency, childDependency);
             }
           });
           resolvableIncompatibleDependencies.remove(dependencyUid);
         }
+        //overwrite bytCode with added transitiveDependency sources
+//        parent.setByteCode(parent.getByteCodeBuilder().build()); //Fixme causes JavaHeap Exception
+//        rootProject.setByteCode(rootProject.getByteCodeBuilder().build()); //Fixme causes ClosedFileSystemException Exception
       }
     });
   }
