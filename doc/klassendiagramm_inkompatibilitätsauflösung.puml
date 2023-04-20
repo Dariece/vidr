@@ -126,7 +126,7 @@ Dependency "1" --o "0..*" Dependency : contains
 
 IncompatibilityResolver "1" --> "1" StrategyDeterminer : uses
 IncompatibilityResolver "1" --> "0..1" IncompatibilityFixer : uses
-IncompatibilityResolver "1" --> "0..1" IncompatibilityChecker : uses
+IncompatibilityResolver "1" -r-> "0..1" IncompatibilityChecker : uses
 IncompatibilityResolver "1" --> "0..1" Dependency : resolves
 
 FullStrategyDeterminer --|> StrategyDeterminer
@@ -136,15 +136,15 @@ StrategyDeterminer "1" --> "0..1" IncompatibilityFixer : \n\ndetermines
 StrategyDeterminer "1" --> "0..1" IncompatibilityChecker : determines
 
 IncompatibilityFixer "1" --> "1"  DependencyCheckResult : fixes
-IncompatibilityFixer "1" --> "1"  IncompatibilityType : isUsedFor
-IncompatibilityFixer "1" --> "1"  BinaryIncompatibilityType : isUsedFor
-IncompatibilityFixer "1" --> "1"  BehaviourIncompatibilityType : isUsedFor
+IncompatibilityFixer "1" -u-> "1"  IncompatibilityType : isUsedFor
+IncompatibilityFixer "1" -u-> "1"  BinaryIncompatibilityType : isUsedFor
+IncompatibilityFixer "1" -u-> "1"  BehaviourIncompatibilityType : isUsedFor
 IncompatibilityChecker "1" --> "1"  Dependency : checks
 
-IncompatibilityFixer <|.. RenamePackageFixer
+IncompatibilityFixer <|.l. RenamePackageFixer
 IncompatibilityFixer <|.. ChangeDependencyOrderFixer
 IncompatibilityFixer <|.. HarmonizeVersionFixer
-IncompatibilityFixer <|.. ModifyClassloaderFixer
+IncompatibilityFixer <|.r. ModifyClassloaderFixer
 IncompatibilityFixer <|.. RemoveDependencyFixer
 IncompatibilityFixer <|.. SetNewVersionFixer
 IncompatibilityFixer <|.. SetStableVersionFixer
