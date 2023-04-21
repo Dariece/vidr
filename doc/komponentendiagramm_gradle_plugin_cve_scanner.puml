@@ -1,0 +1,31 @@
+@startuml
+top to bottom direction
+
+frame "Openshift"{
+    frame "Pod CI-Pipelinerun 1-n"{
+        node "Container"{
+            [Software Project] as sp
+            [Gradle-Plugin] as gp
+        }
+    }
+
+    () "HTTP"
+    frame "Pod CVE-Scan"{
+        node "Container Application"{
+            [CVE-Scanner] as cs
+            HTTP - cs
+        }
+        () "TCP"
+        node "Container DB"{
+            database "CVE-DB" as db
+            TCP - db
+        }
+    }
+}
+
+
+gp -u->"uses" HTTP
+cs --> "uses" TCP
+gp -r->"checks" sp
+
+@enduml
