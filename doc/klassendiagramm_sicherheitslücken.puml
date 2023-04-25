@@ -1,0 +1,73 @@
+@startuml
+top to bottom direction
+
+
+package "scanner" {
+    interface VulnerabilityScanner {
+        + getIdentifier() : VulnerabilityIdentifier
+        + initClient(URI) :  void
+        + scan(ScanJob, Path) : OutputStream
+        + close() : void
+    }
+
+    abstract HttpClientService {
+        - httpClient : HttpClient
+        # objectMapper : ObjectMapper
+
+        # getUrlPrefix(): String
+    }
+
+    class SteadyClientScanner {}
+
+    class TrivyClientScanner {}
+}
+
+package "vo" {
+    enum "ScanFormat" {
+        SBOM
+    }
+
+    class ScanJob {
+        - applicationName : String
+        - format : ScanFormat
+        - stage : String
+        - pipelineRun : String
+        - severities : CvssSeverity
+
+        - ScanJob()
+
+        + <<static>> builder() : ScanJobBuilder
+        + getApplicationName() : String
+        + getFormat() : ScanFormat
+        + getStage() : String
+        + getPipelineRun() : String
+        + getSeverities() : CvssSeverity
+    }
+}
+
+enum "VulnerabilityIdentifier" {
+    METADATA_DB_COMPARISION,
+    STATIC_DYNAMIC_BYTECODE_ANALYZATION
+}
+
+class VulnerabilityScanStrategyDeterminer {
+    - vulnerabilityStrategies: List<VulnerabilityScanner>
+    - identifier: VulnerabilityIdentifier
+
+    + setIdentifier(VulnerabilityIdentifier) : void
+    + getIdentifier() : VulnerabilityIdentifier
+    + determineScanService(URI) : VulnerabilityScanner
+}
+
+VulnerabilityScanStrategyDeterminer "1" --> "1" VulnerabilityIdentifier : uses
+VulnerabilityScanStrategyDeterminer "1" -r-> "1" VulnerabilityScanner : determines
+VulnerabilityScanner "1" --> "1" VulnerabilityIdentifier : isIdentifiedBy
+VulnerabilityScanner "1" -r-> "1" ScanJob : usedWith
+ScanJob "1" --o "1" ScanFormat : "contains"
+
+
+VulnerabilityScanner <|.. HttpClientService
+VulnerabilityScanner <|.. SteadyClientScanner
+HttpClientService <|-- TrivyClientScanner
+
+@enduml
