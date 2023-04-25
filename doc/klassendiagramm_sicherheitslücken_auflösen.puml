@@ -1,0 +1,107 @@
+@startuml
+top to bottom direction
+
+
+package "resolve" {
+    class VulnerabilityDependencyFixVersionResolver<T> {
+        - reportDeserializer : T
+        - unfixableDependencies : \n List<VulnerableDependency>
+
+        + resolveFixVersions(List<Vulnerability>) : \n List<VulnerableDependency>
+    }
+
+    package "vo"{
+        abstract "GavDependency" {
+            - group : String
+            - name : String
+            - version : String
+
+            + getDependencyName()\n : String
+            + getGroup() : String
+            + getName() : String
+            + getVersion() : String
+        }
+
+        class VulnerableDependency {
+            - fixVersion : String
+            - severity : CvssSeverity
+
+            - getFixVersion() : String
+            - getSeverity() : CvssSeverity
+        }
+    }
+}
+
+package "report" {
+    interface VulnerabilityReportDeserializer<T> {
+        + deserialize(Path) : VulnerabilityReport<T>
+        + extractVulnerableDependencies(List<T>) : \n List<VulnerableDependency>
+        + extractVulnerableDependency(T, String) : \n VulnerableDependency
+    }
+
+    class TrivyReportDeserializer{
+        - objectMapper : ObjectMapper
+    }
+
+
+    package "vo"{
+        package "trivy" {
+            class TrivyVulnerability{
+            }
+
+            class TrivyReport{
+            }
+        }
+
+        enum "CvssSeverity" {
+            UNKOWN,
+            LOW,
+            MEDIUM,
+            HIGH,
+            CRITICAL
+        }
+
+        abstract Vulnerability {
+            - cveId : String
+            - cveTitle : String;
+            - severity : CvssSeverity
+            - actualVersion : String
+            - fixedVersions : List<String>
+            - dependencyName : String
+
+            + <<static>> builder() : Vulnerability
+            + getFixedVersions() : List<String>
+            + getActualVersion() : String
+            + getDependencyName(): String
+            + getMaxFixVersion() : String
+            + isFixable() : boolean
+            + checkSeverityIsHigherThanMedium() \n : boolean
+        }
+
+        abstract VulnerabilityReport<T> {
+            - fileName : String
+            - type : String
+            - vulnerabilities : List<T>
+
+            + <<static>> builder() : VulnerabilityReport
+            + getVulnerabilities() : List<T>
+        }
+    }
+}
+
+VulnerabilityReport "1" -l-o "0..*" Vulnerability : contains
+TrivyReport "1" -l-o "0..*" TrivyVulnerability : contains
+VulnerableDependency "1" --o "1" "CvssSeverity" : contains
+Vulnerability "1" --o "1" "CvssSeverity" : contains
+
+VulnerabilityReportDeserializer "1" -r-> "1" VulnerabilityReport : produces
+VulnerabilityReportDeserializer "1" -r-> "0..*" VulnerableDependency : produces
+VulnerabilityDependencyFixVersionResolver "1" --> "0..*" VulnerableDependency : resolves
+VulnerabilityDependencyFixVersionResolver "1" --> "1" VulnerabilityReportDeserializer : uses
+
+VulnerabilityReport <|.. TrivyReport
+Vulnerability <|.. TrivyVulnerability
+VulnerabilityReportDeserializer <|.. TrivyReportDeserializer
+GavDependency <|.. VulnerableDependency
+
+@enduml
