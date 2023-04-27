@@ -6,14 +6,12 @@ import java.io.FileInputStream;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.factory.Lists;
 import org.gradle.api.artifacts.Configuration;
 import sootup.java.core.JavaProject;
-import sootup.java.core.views.JavaView;
 
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
@@ -25,9 +23,7 @@ public class IncompatibilityDependency extends GavDependency {
   private Configuration configuration;
 
   //custom attributes
-  @Setter
-  @Builder.Default
-  private boolean fixed = false;
+  private boolean fixed;
   private FileInputStream sourceCode;
   //  private FileInputStream byteCode;
   private JavaProject byteCode;
@@ -36,10 +32,11 @@ public class IncompatibilityDependency extends GavDependency {
   @Builder.Default
   private MutableList<IncompatibilityDependency> transitiveDependencies = Lists.mutable.empty();
 
+  private boolean rootProject;
+  private boolean transitiveProjectDependency;
   @Builder.Default
-  private boolean rootProject = false;
-  @Builder.Default
-  private boolean transitiveProjectDependency = false;
+  private boolean loadedDependency = true;
+  private int riskLevel;
 
   public IncompatibilityDependency copy(){
     return IncompatibilityDependency.builder()

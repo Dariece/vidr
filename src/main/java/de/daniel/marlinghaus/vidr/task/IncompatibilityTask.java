@@ -75,18 +75,17 @@ public abstract class IncompatibilityTask extends DefaultTask {
     //get not actual dependency versions to check version conflict
     notResolvedDependencyVersions = Sets.mutable.empty();
     getResolvableDependencies().get().getResolutionResult().getAllComponents()
-        .forEach(resolvedComponent -> {
-          resolvedComponent.getDependents().forEach(availableDependencyVersion -> {
-            if (!Objects.equals(resolvedComponent.getModuleVersion().toString(),
-                availableDependencyVersion.getRequested().getDisplayName())) {
-              notResolvedDependencyVersions.add(availableDependencyVersion);
-            }
-          });
-        });
+        .forEach(resolvedComponent ->
+            resolvedComponent.getDependents().forEach(availableDependencyVersion -> {
+              if (!Objects.equals(resolvedComponent.getModuleVersion().toString(),
+                  availableDependencyVersion.getRequested().getDisplayName())) {
+                notResolvedDependencyVersions.add(availableDependencyVersion);
+              }
+            }));
 
     for (ResolvedDependency directProjectDependency : getResolvedConfiguration().get()
         .getFirstLevelModuleDependencies()) {
-      buildDependencyGraph(projectJavaVersion, directProjectDependency, rootProject);
+      buildDependencyTree(projectJavaVersion, directProjectDependency, rootProject);
     }
 
     //Fixme test only
@@ -112,16 +111,15 @@ public abstract class IncompatibilityTask extends DefaultTask {
   }
 
   /**
-   * recursively build dependency graph from root to transitive dependencies
+   * recursively build dependency tree from root to transitive dependencies
    *
    * @param projectJavaVersion java version of project
    * @param directDependency   direct dependency from parent point of view
    * @param parent             parent dependency (or root project)
    */
   //adapted from CycloneDxTask
-  private void buildDependencyGraph(int projectJavaVersion, ResolvedDependency directDependency,
+  private void buildDependencyTree(int projectJavaVersion, ResolvedDependency directDependency,
       IncompatibilityDependency parent) {
-
     getJarArtifact(directDependency).ifPresent(resolvedArtifact -> {
       var identifier = resolvedArtifact.getModuleVersion().getId();
       if (!LONG_TIME_LIB.contains(identifier.getModule().toString())) {
@@ -130,7 +128,6 @@ public abstract class IncompatibilityTask extends DefaultTask {
         IncompatibilityDependency childDependency = IncompatibilityDependency.builder()
             .name(identifier.getName()).group(identifier.getGroup())
             .version(identifier.getVersion())
-            //TODO add child jar source to same soot project
             .byteCode(SootUtil.tryGetProjectForJavaVersion(artifactPath, projectJavaVersion))
             .transitiveProjectDependency(!parent.isRootProject()).build();
 //        childDependency.setByteCodeBuilder(SootUtil.configureProjectBuilder(
@@ -154,6 +151,7 @@ public abstract class IncompatibilityTask extends DefaultTask {
               getLogger().info("Resolve duplicate Dependency: {}", notResolvedDependency);
               String[] nameSplit = newDependencyIdentifier.split(":");
               duplicate.setVersion(nameSplit[2]);
+              duplicate.setLoadedDependency(false);
 
               //create anonymous configuration with childDependency and resolve it to get correct artifact path
               final Dependency jar = getProject().getDependencies().create(newDependencyIdentifier);
@@ -177,7 +175,7 @@ public abstract class IncompatibilityTask extends DefaultTask {
           transitiveDependencies.forEach(transitiveDependency -> {
             if (!resolvableIncompatibleDependencies.containsKey(dependencyUid)) {
               resolvableIncompatibleDependencies.put(dependencyUid, childDependency);
-              buildDependencyGraph(projectJavaVersion, transitiveDependency, childDependency);
+              buildDependencyTree(projectJavaVersion, transitiveDependency, childDependency);
             }
           });
           resolvableIncompatibleDependencies.remove(dependencyUid);
