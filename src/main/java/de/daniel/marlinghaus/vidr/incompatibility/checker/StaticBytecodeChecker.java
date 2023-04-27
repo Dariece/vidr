@@ -1,5 +1,7 @@
 package de.daniel.marlinghaus.vidr.incompatibility.checker;
 
+import static de.daniel.marlinghaus.vidr.incompatibility.type.GeneralIncompatibilityType.BINARY_INCOMPATIBILITY;
+
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependency;
 import de.daniel.marlinghaus.vidr.incompatibility.vo.IncompatibilityDependencyCheckResult;
 import java.nio.file.ClosedFileSystemException;
@@ -62,7 +64,7 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
     }
 
     MutableMultimap<String, JavaSootMethod> incompatibilityMethods = Multimaps.mutable.set.empty();
-    MutableMultimap<String, IncompatibilityDependency> incompatibilities = Multimaps.mutable.set.empty();
+    MutableMultimap<String, IncompatibilityDependencyCheckResult> incompatibilities = Multimaps.mutable.set.empty();
     //check
     loadedFeatureSetLi.forEachKeyMultiValues((classSignature, li) -> {
       MutableCollection<JavaSootMethod> ri = referencedFeatureSetRi.get(classSignature);
@@ -71,14 +73,18 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
       if (!li.containsAll(ri)) {
         incompatibilityMethods.putAll(classSignature, ri);
         duplicateClassesDi.get(classSignature).forEach(d -> {
-          d.setRiskLevel(4);
-          incompatibilities.put(classSignature, d);
+          var checkResult = IncompatibilityDependencyCheckResult.builder()
+              .incompatible(true).type(BINARY_INCOMPATIBILITY).riskLevel(4)
+              .name(d.getName()).group(d.getGroup()).version(d.getVersion())
+              .build();
+          incompatibilities.put(classSignature, checkResult);
         });
       }
     });
     log.quiet("Incompatibilities (Ii): {}", incompatibilities);
     log.quiet("--Successful--\n");
 
+    //TODO implement
     return IncompatibilityDependencyCheckResult.builder()
         .build();
   }

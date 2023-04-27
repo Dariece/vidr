@@ -28,7 +28,7 @@ public class IncompatibilityDependency extends GavDependency {
   //  private FileInputStream byteCode;
   private JavaProject byteCode;
   private JavaProject.JavaProjectBuilder byteCodeBuilder;
-//  private JavaView byteCode;
+  //  private JavaView byteCode;
   @Builder.Default
   private MutableList<IncompatibilityDependency> transitiveDependencies = Lists.mutable.empty();
 
@@ -36,9 +36,8 @@ public class IncompatibilityDependency extends GavDependency {
   private boolean transitiveProjectDependency;
   @Builder.Default
   private boolean loadedDependency = true;
-  private int riskLevel;
 
-  public IncompatibilityDependency copy(){
+  public IncompatibilityDependency copy() {
     return IncompatibilityDependency.builder()
         .byteCode(this.getByteCode())
         .group(this.getGroup())
