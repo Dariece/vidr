@@ -89,6 +89,11 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
         .build();
   }
 
+  private void defineReferencedRootProjectFeatureSet() {
+    rootProjectClasses.forEach(rClass -> referencedRootProjectFeatureSetRH.addAll(
+        rClass.getMethods().stream().map(SootClassMember::getSignature).toList()));
+  }
+
 
   private void defineReferencedFeatureSet() {
     CallGraphAlgorithm callGraphAlgorithm = new ClassHierarchyAnalysisAlgorithm(rootProjectView,
@@ -106,11 +111,6 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
             referencedFeatureSetRi.put(classSignature, duplicateClassMethod);
           }
         }));
-  }
-
-  private void defineReferencedRootProjectFeatureSet() {
-    rootProjectClasses.forEach(rClass -> referencedRootProjectFeatureSetRH.addAll(
-        rClass.getMethods().stream().map(SootClassMember::getSignature).toList()));
   }
 
   private void defineDuplicateSets(IncompatibilityDependency parentDependency,
@@ -137,7 +137,6 @@ public class StaticBytecodeChecker extends AbstractIncompatibilityChecker {
             shadowedFeatureSetSi.putAll(classSignature, methods);
           }
         }));
-
         defineDuplicateSets(transitiveDependency, tdClasses);
       } catch (ClosedFileSystemException e) {
         var message = String.format("Failed to define duplicate classes (Di) for %s ",
