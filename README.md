@@ -53,6 +53,7 @@ TODO: Internetquellen als PDF sichern
   - Besteht ein Bug im Framework, muss entweder auf einen Patch gewartet werden oder ein anderes Open Source Framework gesucht werden, welches zur statischen Bytecodeanalyse inkl. Kontrollflussgraphen in der Lage ist
     - CFG: https://link.springer.com/article/10.1007/BF03160273
     - Die Bytecodeanalyse selbst zu implementieren ist möglich, steht aber in keinem Verhältnis zum Umsetzungsaufwand
+  - Es muss eine automatisierte Prüfung stattfinden, ob die CVEs von transitiven Abhängigkeiten durch direkte Abhängigkeiten mitbehoben werden 
  
 ## lines of code
 Ohne leere Zeilen
