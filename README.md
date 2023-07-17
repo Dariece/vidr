@@ -1,7 +1,6 @@
 # vidr
 Vulnerability Incompatible Dependencies Resolver
 
-TODO: Internetquellen als PDF sichern
 ## complications
 - Allgemeines:
   - Das Gradle Testproject und die Lib zerstören sich gegenseitig den build cache
